@@ -1,20 +1,32 @@
 <?php
 
-use App\Http\Controllers\ProfileController;
+use App\Http\Controllers\CandidateAuthController;
 use Illuminate\Support\Facades\Route;
 
+// Redirige la raíz a la página de login
 Route::get('/', function () {
     return to_route('login');
 });
 
-Route::get('/dashboard', function () {
-    return view('dashboard');
-})->middleware(['auth', 'verified'])->name('dashboard');
+// Rutas de autenticación para candidatos (invitados)
+Route::middleware('guest:candidate')->group(function () {
+    // Login
+    Route::get('login', [CandidateAuthController::class, 'create'])->name('login');
+    Route::post('login', [CandidateAuthController::class, 'store']);
 
-Route::middleware('auth')->group(function () {
-    Route::get('/profile', [ProfileController::class, 'edit'])->name('profile.edit');
-    Route::patch('/profile', [ProfileController::class, 'update'])->name('profile.update');
-    Route::delete('/profile', [ProfileController::class, 'destroy'])->name('profile.destroy');
+    // Register
+    Route::get('register', [CandidateAuthController::class, 'createRegister'])->name('register');
+    Route::post('register', [CandidateAuthController::class, 'storeRegister']);
 });
 
-require __DIR__.'/auth.php';
+// Rutas protegidas para candidatos autenticados
+Route::middleware('auth:candidate')->group(function () {
+    // Ruta de ejemplo para las instrucciones del test
+    Route::get('/instrucciones', function () {
+        // Aquí iría la lógica para mostrar las instrucciones del test
+        return '<h1>Instrucciones del Test (Ruta Protegida)</h1>';
+    })->name('instrucciones');
+
+    // Ruta para cerrar sesión
+    Route::post('logout', [CandidateAuthController::class, 'destroy'])->name('logout');
+});

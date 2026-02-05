@@ -3,11 +3,12 @@
 namespace App\Models;
 
 use Illuminate\Database\Eloquent\Factories\HasFactory;
-use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\SoftDeletes;
+use Illuminate\Foundation\Auth\User as Authenticatable; // <-- Importar clase correcta
 use Illuminate\Notifications\Notifiable;
 
-class Candidate extends Model
+// Extender de Authenticatable en lugar de Model
+class Candidate extends Authenticatable
 {
      use HasFactory, Notifiable, SoftDeletes;
 
@@ -16,6 +17,7 @@ class Candidate extends Model
     protected $fillable = [
         'name',
         'email',
+        'dui_nit', // Añadido para asignación masiva
         'password',
         'age',
         'occupation',

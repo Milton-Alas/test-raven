@@ -36,7 +36,7 @@ return new class extends Migration
             $table->index('email');
             $table->index('test_completed');
             $table->index(['test_completed', 'is_active']);
-
+            
         });
     }
 

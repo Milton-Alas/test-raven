@@ -44,6 +44,7 @@ return [
         'candidate' => [
             'driver' => 'session',
             'provider' => 'candidates', // Para candidatos
+        ],
     ],
 
     /*
@@ -72,7 +73,7 @@ return [
         'candidates' => [
             'driver' => 'eloquent',
             'model' => App\Models\Candidate::class,
-        ], 
+        ],
 
         // 'users' => [
         //     'driver' => 'database',
