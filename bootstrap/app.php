@@ -11,7 +11,11 @@ return Application::configure(basePath: dirname(__DIR__))
         health: '/up',
     )
     ->withMiddleware(function (Middleware $middleware): void {
-        //
+
+        $middleware->alias([
+            'candidate.auth' => \App\Http\Middleware\CandidateAuth::class,
+            'test.not.completed' => \App\Http\Middleware\EnsureTestNotCompleted::class,
+        ]);
     })
     ->withExceptions(function (Exceptions $exceptions): void {
         //
