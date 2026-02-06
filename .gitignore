@@ -14,7 +14,7 @@
 /database/*.sqlite
 
 # Archivos de almacenamiento de Laravel
-/storage/app/public
+#/storage/app/public
 /storage/framework/cache/
 /storage/framework/sessions/
 /storage/framework/testing/
