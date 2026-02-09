@@ -14,6 +14,11 @@ export default {
             fontFamily: {
                 sans: ['Figtree', ...defaultTheme.fontFamily.sans],
             },
+            colors: {
+                'ues-blue': '#0047AB',
+                'ues-red': '#E60000',
+                'ues-gold': '#FFCC00',
+            },
         },
     },
 

@@ -1,6 +1,9 @@
 <?php
 
 use App\Http\Controllers\CandidateAuthController;
+use App\Http\Controllers\TestController;
+use App\Http\Controllers\TestInstructionsController;
+use App\Http\Controllers\TestResultController;
 use Illuminate\Support\Facades\Route;
 
 // Redirige la raíz a la página de login
@@ -21,11 +24,23 @@ Route::middleware('guest:candidate')->group(function () {
 
 // Rutas protegidas para candidatos autenticados
 Route::middleware('auth:candidate')->group(function () {
-    // Ruta de ejemplo para las instrucciones del test
-    Route::get('/instrucciones', function () {
-        // Aquí iría la lógica para mostrar las instrucciones del test
-        return '<h1>Instrucciones del Test (Ruta Protegida)</h1>';
-    })->name('instrucciones');
+    // Instrucciones / bienvenida
+    Route::get('/instrucciones', [TestInstructionsController::class, 'welcome'])
+        ->name('candidate.test.welcome');
+
+    // Flujo del test
+    Route::post('/test/start', [TestController::class, 'start'])
+        ->name('candidate.test.start');
+    Route::get('/test/question', [TestController::class, 'showQuestion'])
+        ->name('candidate.test.question');
+    Route::post('/test/answer', [TestController::class, 'saveAnswer'])
+        ->name('candidate.test.answer');
+    Route::get('/test/timer', [TestController::class, 'getTimerData'])
+        ->name('candidate.test.timer');
+
+    // Resultados
+    Route::get('/test/completed', [TestResultController::class, 'completed'])
+        ->name('candidate.test.completed');
 
     // Ruta para cerrar sesión
     Route::post('logout', [CandidateAuthController::class, 'destroy'])->name('logout');
