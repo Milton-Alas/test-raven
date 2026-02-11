@@ -89,9 +89,17 @@ class TestController extends Controller
      */
     public function saveAnswer(Request $request): JsonResponse
     {
+        $question = TestQuestion::find($request->input('question_id'));
+        $maxAnswers = 6; // Default
+        if ($question) {
+            $seriesCode = $question->series->code ?? null;
+            // Series A y B tienen 6 opciones, C, D, y E tienen 8
+            $maxAnswers = in_array($seriesCode, ['C', 'D', 'E']) ? 8 : 6;
+        }
+
         $request->validate([
             'question_id' => 'required|exists:test_questions,id',
-            'answer' => 'required|integer|min:1|max:6', //se modico a 6 opciones de la matriz
+            'answer' => 'required|integer|min:1|max:' . $maxAnswers,
             'time_spent' => 'nullable|integer',
             'elapsed_time' => 'required|integer',
         ]);

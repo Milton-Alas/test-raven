@@ -66,7 +66,23 @@ return new class extends Migration
 
     private function indexExists(string $table, string $indexName): bool
     {
-        $result = DB::select("SHOW INDEX FROM `{$table}` WHERE Key_name = ?", [$indexName]);
-        return !empty($result);
+        $connection = Schema::getConnection()->getDriverName();
+
+        if ($connection === 'sqlite') {
+            $result = DB::select("SELECT name FROM sqlite_master WHERE type = 'index' AND tbl_name = ? AND name = ?", [$table, $indexName]);
+            return !empty($result);
+        } else if ($connection === 'mysql') {
+            $result = DB::select("SHOW INDEX FROM `{$table}` WHERE Key_name = ?", [$indexName]);
+            return !empty($result);
+        }
+
+        // Fallback for other database drivers (may not be accurate)
+        try {
+            $schemaManager = Schema::getConnection()->getDoctrineSchemaManager();
+            $indexes = $schemaManager->listTableIndexes(DB::getTablePrefix() . $table);
+            return isset($indexes[strtolower($indexName)]);
+        } catch (\Exception $e) {
+            return false; // Or handle the exception as needed
+        }
     }
 };

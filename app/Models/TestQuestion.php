@@ -22,6 +22,7 @@ class TestQuestion extends Model
     {
         return [
             'is_active' => 'boolean',
+            'correct_answer' => 'integer',
         ];
     }
 

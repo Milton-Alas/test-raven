@@ -142,39 +142,39 @@ class TestService
         int $selectedAnswer,
         int $timeSpent = 0
     ): TestAnswer {
-        if ($selectedAnswer < 1 || $selectedAnswer > 6) {
-            throw new \Exception('Respuesta inválida. Debe estar entre 1 y 6.');
+        $series = $question->series->code;
+        $maxOptions = in_array($series, ['C', 'D', 'E']) ? 8 : 6;
+
+        if ($selectedAnswer < 1 || $selectedAnswer > $maxOptions) {
+            throw new \Exception("Respuesta inválida. Debe estar entre 1 y {$maxOptions}.");
         }
 
         $isCorrect = ($selectedAnswer === $question->correct_answer);
 
-        $existingAnswer = TestAnswer::where('test_session_id', $session->id)
+        $answer = TestAnswer::where('test_session_id', $session->id)
             ->where('test_question_id', $question->id)
             ->first();
 
-        if ($existingAnswer) {
-            $existingAnswer->update([
-                'selected_answer' => $selectedAnswer,
-                'is_correct' => $isCorrect,
-                'time_spent' => $timeSpent,
-                'answered_at' => now(),
-                'was_changed' => true,
-                'attempt_number' => $existingAnswer->attempt_number + 1,
-            ]);
-
-            $answer = $existingAnswer;
+        if ($answer) {
+            $answer->selected_answer = $selectedAnswer;
+            $answer->is_correct = $isCorrect;
+            $answer->time_spent = $timeSpent;
+            $answer->answered_at = now();
+            $answer->was_changed = true;
+            $answer->attempt_number = $answer->attempt_number + 1;
         } else {
-            $answer = TestAnswer::create([
-                'test_session_id' => $session->id,
-                'test_question_id' => $question->id,
-                'selected_answer' => $selectedAnswer,
-                'is_correct' => $isCorrect,
-                'time_spent' => $timeSpent,
-                'answered_at' => now(),
-                'attempt_number' => 1,
-                'was_changed' => false,
-            ]);
+            $answer = new TestAnswer();
+            $answer->test_session_id = $session->id;
+            $answer->test_question_id = $question->id;
+            $answer->selected_answer = $selectedAnswer;
+            $answer->is_correct = $isCorrect;
+            $answer->time_spent = $timeSpent;
+            $answer->answered_at = now();
+            $answer->attempt_number = 1;
+            $answer->was_changed = false;
         }
+        
+        $answer->save();
 
         $session->update([
             'last_activity_at' => now(),
