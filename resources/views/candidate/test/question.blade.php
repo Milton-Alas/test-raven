@@ -5,262 +5,202 @@
 @php
     $seriesCode = $question->series->code;
     $numOptions = in_array($seriesCode, ['C', 'D', 'E']) ? 8 : 6;
-    // 6 opciones (A, B) = 3 columnas (2 filas de 3)
-    // 8 opciones (C, D, E) = 4 columnas (2 filas de 4)
     $gridColsClass = ($numOptions === 8) ? 'lg:grid-cols-4' : 'lg:grid-cols-3';
 @endphp
 
 @section('content')
 <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-    <div class="bg-white shadow-lg rounded-xl overflow-hidden">
-        <!-- Header con información del test -->
-        <div class="bg-gradient-to-r from-ues-blue to-blue-700 px-8 py-6 text-white">
-            <div class="flex items-center justify-between">
-                <div>
-                    <h1 class="text-2xl font-bold">Test de Raven</h1>
-                    <p class="text-blue-100 mt-1">
-                        <span class="inline-flex items-center">
-                            <svg class="w-4 h-4 mr-1" fill="currentColor" viewBox="0 0 20 20">
-                                <path d="M9 2a1 1 0 000 2h2a1 1 0 100-2H9z"></path>
-                                <path fill-rule="evenodd" d="M4 5a2 2 0 012-2 3 3 0 003 3h2a3 3 0 003-3 2 2 0 012 2v11a2 2 0 01-2 2H6a2 2 0 01-2-2V5zm3 4a1 1 0 000 2h.01a1 1 0 100-2H7zm3 0a1 1 0 000 2h3a1 1 0 100-2h-3zm-3 4a1 1 0 100 2h.01a1 1 0 100-2H7zm3 0a1 1 0 100 2h3a1 1 0 100-2h-3z" clip-rule="evenodd"></path>
-                            </svg>
-                            Serie {{ $question->series->code ?? '-' }} · Pregunta {{ $question->question_number ?? '-' }}
-                        </span>
-                    </p>
+    <!-- Header con Timer y Progreso -->
+    <div class="bg-white shadow-lg rounded-xl p-6 mb-6 border-t-4 border-ues-blue">
+        <div class="flex flex-col lg:flex-row justify-between items-center gap-6">
+            <!-- Progreso -->
+            <div class="flex-1 w-full">
+                <div class="flex items-center gap-6">
+                    <div class="bg-gradient-to-br from-ues-blue to-blue-700 rounded-lg px-5 py-3 text-white shadow-md">
+                        <p class="text-xs text-blue-100 mb-1">Pregunta</p>
+                        <p class="text-2xl font-bold">
+                            {{ $progress['current_display'] }}
+                            <span class="text-sm text-blue-100">/60</span>
+                        </p>
+                    </div>
+                    
+                    <div class="flex-1">
+                        <div class="flex items-center justify-between mb-2">
+                            <span class="text-sm font-semibold text-ues-blue">Serie {{ $question->series->code }}</span>
+                            <span class="text-xs text-slate-500">({{ $question->question_number }}/12)</span>
+                        </div>
+                        <div class="w-full bg-slate-200 rounded-full h-3 overflow-hidden shadow-inner">
+                            <div 
+                                class="bg-gradient-to-r from-ues-blue to-blue-600 h-3 rounded-full transition-all duration-500 ease-out"
+                                style="width: {{ $progress['percentage'] }}%"
+                            ></div>
+                        </div>
+                    </div>
                 </div>
-                <div class="text-right">
-                    <div class="text-sm text-blue-100 mb-1">Tiempo restante</div>
-                    <div id="timer" class="text-3xl font-bold tabular-nums">{{ $timerData['remaining_formatted'] ?? '45:00' }}</div>
+            </div>
+
+            <!-- Timer -->
+            <div class="lg:ml-8">
+                <p class="text-xs text-slate-600 text-center mb-1 font-semibold">Tiempo Restante</p>
+                <div 
+                    id="timer-display" 
+                    class="text-3xl font-bold text-center px-6 py-2 rounded-lg shadow-md bg-slate-50 border-2 border-slate-300 tabular-nums min-w-[140px]"
+                    data-remaining-seconds="{{ $timerData['remaining_seconds'] }}"
+                >
+                    {{ $timerData['remaining_formatted'] }}
                 </div>
             </div>
         </div>
+    </div>
 
-        <div class="p-8">
-            <!-- Barra de progreso -->
-            <div class="mb-8">
-                <div class="flex items-center justify-between text-sm text-slate-600 mb-2">
-                    <span class="font-medium">Progreso del test</span>
-                    <span class="font-semibold text-ues-blue">{{ $progress['answered'] ?? 0 }} / {{ $progress['total'] ?? 60 }} preguntas</span>
-                </div>
-                <div class="w-full bg-slate-200 rounded-full h-3 overflow-hidden">
-                    <div class="bg-gradient-to-r from-ues-blue to-blue-600 h-3 rounded-full transition-all duration-500 ease-out" 
-                         style="width: {{ $progress['percentage'] ?? 0 }}%"></div>
-                </div>
+    <!-- Pregunta -->
+    <div class="bg-white shadow-lg rounded-xl overflow-hidden">
+        <!-- Matriz Principal -->
+        <div class="bg-gradient-to-b from-slate-50 to-white p-8">
+            <h2 class="text-center text-base font-semibold text-ues-blue mb-4 flex items-center justify-center">
+                <svg class="w-5 h-5 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2"></path>
+                </svg>
+                Selecciona la opción que completa correctamente la matriz
+            </h2>
+            
+            <div class="max-w-2xl mx-auto bg-white rounded-lg shadow-md p-4 border-2 border-slate-200 flex items-center justify-center">
+                <img 
+                    src="{{ asset('storage/' . $question->matrix_image_path) }}" 
+                    alt="Matriz {{ $question->full_code }}"
+                    class="max-w-full h-auto"
+                    style="max-height: 350px;"
+                >
             </div>
+        </div>
 
-            <!-- Imagen de la matriz (ARRIBA) -->
-            <div class="mb-8">
-                <h3 class="text-lg font-semibold text-ues-blue mb-4 flex items-center">
-                    <svg class="w-5 h-5 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 16l4.586-4.586a2 2 0 012.828 0L16 16m-2-2l1.586-1.586a2 2 0 012.828 0L20 14m-6-6h.01M6 20h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 00-2 2v12a2 2 0 002 2z"></path>
-                    </svg>
-                    Matriz del problema
-                </h3>
-                <div class="bg-slate-50 rounded-xl p-6 border-2 border-slate-200 flex items-center justify-center">
-                    @if($question?->matrix_image_path)
-                        <img src="{{ asset('storage/' . $question->matrix_image_path) }}" 
-                             alt="Matriz" 
-                             class="max-w-full h-auto rounded-lg shadow-sm">
-                    @else
-                        <div class="text-slate-400 text-center py-12">
-                            <svg class="w-16 h-16 mx-auto mb-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 16l4.586-4.586a2 2 0 012.828 0L16 16m-2-2l1.586-1.586a2 2 0 012.828 0L20 14m-6-6h.01M6 20h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 00-2 2v12a2 2 0 002 2z"></path>
-                            </svg>
-                            <p>Sin imagen de matriz</p>
+        <!-- Opciones de Respuesta -->
+        <div class="p-8 bg-white">
+            <h3 class="text-center text-base font-semibold text-ues-blue mb-4 flex items-center justify-center">
+                <svg class="w-5 h-5 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z"></path>
+                </svg>
+                Opciones de Respuesta
+            </h3>
+
+            <div class="grid grid-cols-2 {{ $gridColsClass }} gap-4 max-w-4xl mx-auto" id="options-grid">
+                @foreach($question->answerOptions->take($numOptions) as $option)
+                    <div 
+                        class="option-card cursor-pointer bg-white border-2 border-slate-300 rounded-lg p-3 hover:border-ues-blue hover:shadow-md transition-all duration-200 relative"
+                        data-option="{{ $option->option_number }}"
+                    >
+                        <div class="relative">
+                            <!-- Número de opción -->
+                            <div class="option-number absolute -top-2 -left-2 bg-slate-700 text-white w-7 h-7 rounded-full flex items-center justify-center font-bold text-xs shadow-md z-10">
+                                {{ $option->option_number }}
+                            </div>
+                            
+                            <!-- Imagen pequeña -->
+                            <div class="flex items-center justify-center bg-slate-50 rounded p-2" style="min-height: 80px; max-height: 120px;">
+                                <img 
+                                    src="{{ asset('storage/' . $option->option_image_path) }}" 
+                                    alt="Opción {{ $option->option_number }}"
+                                    class="max-w-full h-auto object-contain"
+                                    style="max-height: 100px;"
+                                >
+                            </div>
                         </div>
-                    @endif
-                </div>
+                    </div>
+                @endforeach
             </div>
 
-            <!-- Formulario de respuestas (ABAJO EN 2 FILAS) -->
-            <div>
-                <h3 class="text-lg font-semibold text-ues-blue mb-4 flex items-center">
-                    <svg class="w-5 h-5 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2m-6 9l2 2 4-4"></path>
+            <!-- Botón Siguiente -->
+            <div class="mt-8 flex flex-col items-center gap-3">
+                <button 
+                    id="next-btn"
+                    disabled
+                    class="disabled:opacity-50 disabled:cursor-not-allowed disabled:bg-slate-400 
+                           bg-ues-red hover:bg-red-700 text-white font-bold py-3 px-10 rounded-lg text-base
+                           shadow-md hover:shadow-lg transition duration-200 transform hover:scale-105
+                           flex items-center"
+                >
+                    <span id="btn-text">Selecciona una opción</span>
+                    <svg id="btn-arrow" class="hidden w-5 h-5 ml-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M14 5l7 7m0 0l-7 7m7-7H3"></path>
                     </svg>
-                    Selecciona tu respuesta
-                </h3>
+                    <svg id="btn-loading" class="hidden animate-spin h-5 w-5 ml-2" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
+                        <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
+                        <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+                    </svg>
+                </button>
+                
+                <p class="text-xs text-slate-500 flex items-center">
+                    <svg class="w-4 h-4 mr-1" fill="currentColor" viewBox="0 0 20 20">
+                        <path fill-rule="evenodd" d="M18 10a8 8 0 11-16 0 8 8 0 0116 0zm-7-4a1 1 0 11-2 0 1 1 0 012 0zM9 9a1 1 0 000 2v3a1 1 0 001 1h1a1 1 0 100-2v-3a1 1 0 00-1-1H9z" clip-rule="evenodd"></path>
+                    </svg>
+                    Recuerda: no podrás regresar a esta pregunta
+                </p>
+            </div>
+        </div>
+    </div>
 
-                <form id="answer-form" method="POST" action="{{ route('candidate.test.answer') }}">
-                    @csrf
-                    <input type="hidden" name="question_id" value="{{ $question->id }}">
-                    <input type="hidden" name="elapsed_time" id="elapsed_time" value="{{ $timerData['elapsed_seconds'] ?? 0 }}">
-
-                    <!-- Grid: 2 columnas móvil, 3 columnas (series A,B) o 4 columnas (series C,D,E) en desktop -->
-                    <div class="grid grid-cols-2 {{ $gridColsClass }} gap-4 mb-6">
-                        @foreach($question->answerOptions->take($numOptions) as $option)
-                            <label class="border-2 border-slate-300 rounded-lg p-4 hover:border-ues-blue hover:shadow-md cursor-pointer transition-all duration-200 option-card flex flex-col items-center">
-                                <!-- Radio button visible -->
-                                <div class="flex items-center justify-between w-full mb-3">
-                                    <span class="text-sm font-semibold text-slate-700">Opción {{ $option->option_number }}</span>
-                                    <input type="radio" 
-                                           name="answer" 
-                                           value="{{ $option->option_number }}" 
-                                           class="w-5 h-5 text-ues-blue border-slate-300 focus:ring-2 focus:ring-ues-blue option-radio">
-                                </div>
-                                
-                                <!-- Imagen de la opción -->
-                                <div class="flex items-center justify-center min-h-[100px] w-full">
-                                    @if($option->option_image_path)
-                                        <img src="{{ asset('storage/' . $option->option_image_path) }}" 
-                                             alt="Opción {{ $option->option_number }}" 
-                                             class="max-w-full h-auto">
-                                    @else
-                                        <span class="text-slate-400 text-sm">Imagen {{ $option->option_number }}</span>
-                                    @endif
-                                </div>
-                            </label>
-                        @endforeach
-                    </div>
-
-                    <!-- Botón de envío -->
-                    <div class="flex flex-col sm:flex-row items-center justify-between mt-8 pt-6 border-t border-slate-200 gap-4">
-                        <p class="text-sm text-slate-500 flex items-center">
-                            <svg class="w-4 h-4 mr-1" fill="currentColor" viewBox="0 0 20 20">
-                                <path fill-rule="evenodd" d="M18 10a8 8 0 11-16 0 8 8 0 0116 0zm-7-4a1 1 0 11-2 0 1 1 0 012 0zM9 9a1 1 0 000 2v3a1 1 0 001 1h1a1 1 0 100-2v-3a1 1 0 00-1-1H9z" clip-rule="evenodd"></path>
-                            </svg>
-                            Recuerda: no podrás regresar
-                        </p>
-                        <button type="submit" 
-                                class="bg-ues-red hover:bg-red-700 text-white font-semibold py-3 px-8 rounded-lg 
-                                       shadow-md hover:shadow-lg transform hover:scale-105 transition duration-200
-                                       flex items-center">
-                            <span>Enviar respuesta</span>
-                            <svg class="w-5 h-5 ml-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M14 5l7 7m0 0l-7 7m7-7H3"></path>
-                            </svg>
-                        </button>
-                    </div>
-                </form>
+    <!-- Loading Overlay -->
+    <div id="loading-overlay" class="hidden fixed inset-0 bg-black bg-opacity-60 z-50 flex items-center justify-center">
+        <div class="bg-white rounded-xl p-8 max-w-sm shadow-2xl">
+            <div class="text-center">
+                <div class="w-16 h-16 bg-ues-blue rounded-full mx-auto mb-4 flex items-center justify-center">
+                    <svg class="animate-spin h-10 w-10 text-white" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
+                        <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
+                        <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+                    </svg>
+                </div>
+                <p class="text-slate-900 font-semibold text-lg">Guardando respuesta...</p>
+                <p class="text-slate-500 text-sm mt-2">Por favor espera</p>
             </div>
         </div>
     </div>
 </div>
 
+<!-- Hidden Data -->
+<input type="hidden" id="question-id" value="{{ $question->id }}">
+<input type="hidden" id="session-id" value="{{ $session->id }}">
+<input type="hidden" id="csrf-token" value="{{ csrf_token() }}">
+<input type="hidden" id="save-answer-url" value="{{ route('candidate.test.answer') }}">
+<input type="hidden" id="timer-url" value="{{ route('candidate.test.timer') }}">
+<input type="hidden" id="completed-url" value="{{ route('candidate.test.completed') }}">
+@endsection
+
+@push('styles')
 <style>
-/* Estilos para resaltar la opción seleccionada */
-.option-card:has(input:checked) {
-    border-color: #0047AB !important;
-    background-color: #EFF6FF !important;
-    box-shadow: 0 10px 15px -3px rgba(0, 71, 171, 0.2), 0 4px 6px -2px rgba(0, 71, 171, 0.1) !important;
-    transform: scale(1.03);
+/* Estilos para las opciones seleccionadas */
+.option-card.selected {
+    border-color: #0047AB !important; /* ues-blue */
+    background-color: #EFF6FF !important; /* blue-50 */
+    box-shadow: 0 4px 6px -1px rgba(0, 71, 171, 0.2), 0 2px 4px -1px rgba(0, 71, 171, 0.1) !important;
+    transform: scale(1.05);
 }
 
-.option-card:has(input:checked)::before {
-    content: "✓ SELECCIONADA";
+.option-card.selected::after {
+    content: "✓";
     position: absolute;
-    top: -12px;
-    left: 50%;
-    transform: translateX(-50%);
-    background-color: #0047AB;
+    top: -8px;
+    right: -8px;
+    background-color: #0047AB; /* ues-blue */
     color: white;
-    font-size: 0.75rem;
+    width: 24px;
+    height: 24px;
+    border-radius: 50%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
     font-weight: bold;
-    padding: 4px 12px;
-    border-radius: 9999px;
-    box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1);
-    z-index: 10;
-    white-space: nowrap;
+    font-size: 14px;
+    box-shadow: 0 2px 4px rgba(0, 0, 0, 0.2);
+    z-index: 20;
 }
 
-.option-card {
-    position: relative;
-}
-
-/* Forzar el grid en desktop */
-@media (min-width: 1024px) {
-    .grid.lg\:grid-cols-3 {
-        grid-template-columns: repeat(3, minmax(0, 1fr)) !important;
-    }
-    .grid.lg\:grid-cols-4 {
-        grid-template-columns: repeat(4, minmax(0, 1fr)) !important;
-    }
+.option-card.selected .option-number {
+    background-color: #FFCC00 !important; /* ues-yellow */
+    color: #1F2937 !important; /* gray-800 */
 }
 </style>
+@endpush
 
-<script>
-    const timerEl = document.getElementById('timer');
-    const elapsedInput = document.getElementById('elapsed_time');
-
-    async function refreshTimer() {
-        try {
-            const res = await fetch("{{ route('candidate.test.timer') }}", { 
-                headers: { 'X-Requested-With': 'XMLHttpRequest' } 
-            });
-            if (!res.ok) return;
-            const data = await res.json();
-            
-            // Actualizar timer con animación
-            timerEl.textContent = data.remaining_formatted;
-            elapsedInput.value = data.elapsed_seconds;
-            
-            // Añadir clase de advertencia si quedan menos de 5 minutos
-            if (data.elapsed_seconds > 2400) { // 40 minutos transcurridos
-                timerEl.classList.add('text-ues-red', 'animate-pulse');
-            }
-            
-            if (data.has_timed_out) {
-                window.location.href = "{{ route('candidate.test.completed') }}";
-            }
-        } catch (e) {
-            // silent
-        }
-    }
-
-    // Actualizar cada 10 segundos //esto se debe modificar 
-    setInterval(refreshTimer, 10000);
-    
-    // Prevenir cierre accidental de la ventana
-    const beforeUnloadHandler = function (e) {
-        e.preventDefault();
-        e.returnValue = '';
-    };
-    window.addEventListener('beforeunload', beforeUnloadHandler);
-    
-    // Enviar respuesta vía AJAX y avanzar a la siguiente pregunta
-    document.getElementById('answer-form').addEventListener('submit', async function (e) {
-        e.preventDefault();
-
-        const form = e.currentTarget;
-        const submitBtn = form.querySelector('button[type="submit"]');
-        if (submitBtn) {
-            submitBtn.disabled = true;
-            submitBtn.classList.add('opacity-70', 'cursor-not-allowed');
-        }
-
-        try {
-            const res = await fetch(form.action, {
-                method: 'POST',
-                headers: { 'X-Requested-With': 'XMLHttpRequest' },
-                body: new FormData(form),
-            });
-
-            const data = await res.json().catch(() => null);
-
-            if (!res.ok || !data?.success) {
-                const message = data?.message || 'No se pudo guardar la respuesta.';
-                alert(message);
-                return;
-            }
-
-            // Permitir navegación sin prompt antes de redirigir
-            window.removeEventListener('beforeunload', beforeUnloadHandler);
-
-            if (data.completed && data.redirect) {
-                window.location.href = data.redirect;
-                return;
-            }
-
-            // Avanzar a la siguiente pregunta
-            window.location.href = "{{ route('candidate.test.question') }}";
-        } catch (e) {
-            alert('Error al guardar la respuesta.');
-        } finally {
-            if (submitBtn) {
-                submitBtn.disabled = false;
-                submitBtn.classList.remove('opacity-70', 'cursor-not-allowed');
-            }
-        }
-    });
-</script>
-@endsection
+@push('scripts')
+<script src="{{ asset('js/test-timer.js') }}"></script>
+@endpush

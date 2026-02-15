@@ -49,7 +49,10 @@ class TestController extends Controller
     {
         /** @var Candidate $candidate */
         $candidate = Auth::guard('candidate')->user();
-        $session = $candidate->testSession;
+        $session = $candidate->testSession()
+            ->whereIn('status', ['not_started', 'in_progress', 'paused'])
+            ->latest('id')
+            ->first();
 
         if (!$session) {
             return redirect()->route('candidate.test.welcome');
@@ -74,7 +77,8 @@ class TestController extends Controller
         }
 
         $timerData = $this->timerService->getTimerData($session);
-        $progress = $this->testService->getProgress($session);
+        // Modificado para pasar la pregunta al método getProgress
+        $progress = $this->testService->getProgress($session, $question);
 
         return view('candidate.test.question', compact(
             'session',
@@ -93,20 +97,22 @@ class TestController extends Controller
         $maxAnswers = 6; // Default
         if ($question) {
             $seriesCode = $question->series->code ?? null;
-            // Series A y B tienen 6 opciones, C, D, y E tienen 8
             $maxAnswers = in_array($seriesCode, ['C', 'D', 'E']) ? 8 : 6;
         }
 
+        // Se elimina la validación para 'elapsed_time'
         $request->validate([
             'question_id' => 'required|exists:test_questions,id',
             'answer' => 'required|integer|min:1|max:' . $maxAnswers,
             'time_spent' => 'nullable|integer',
-            'elapsed_time' => 'required|integer',
         ]);
 
         /** @var Candidate $candidate */
         $candidate = Auth::guard('candidate')->user();
-        $session = $candidate->testSession;
+        $session = $candidate->testSession()
+            ->whereIn('status', ['not_started', 'in_progress', 'paused'])
+            ->latest('id')
+            ->first();
 
         if (!$session || $session->is_completed) {
             return response()->json([
@@ -116,7 +122,8 @@ class TestController extends Controller
         }
 
         try {
-            $this->testService->updateRemainingTime($session, (int) $request->elapsed_time);
+            // Se elimina la actualización de tiempo redundante.
+            // El TimerService ahora es la única fuente de verdad.
 
             if ($this->timerService->hasTimedOut($session->fresh())) {
                 $this->testService->completeTest($session, 'timeout');
@@ -173,7 +180,10 @@ class TestController extends Controller
     {
         /** @var Candidate $candidate */
         $candidate = Auth::guard('candidate')->user();
-        $session = $candidate->testSession;
+        $session = $candidate->testSession()
+            ->whereIn('status', ['not_started', 'in_progress', 'paused'])
+            ->latest('id')
+            ->first();
 
         if (!$session) {
             return response()->json(['error' => 'No hay sesión activa'], 404);

@@ -11,10 +11,13 @@
         @if (file_exists(public_path('build/manifest.json')) || file_exists(public_path('hot')))
             @vite(['resources/css/app.css', 'resources/js/app.js'])
         @endif
+
+        @stack('styles')
     </head>
     <body class="min-h-screen bg-slate-50 text-slate-900">
         <main class="py-10">
             @yield('content')
         </main>
+        @stack('scripts')
     </body>
 </html>

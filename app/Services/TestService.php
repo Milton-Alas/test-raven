@@ -22,6 +22,7 @@ class TestService
 
         $existingSession = TestSession::where('candidate_id', $candidate->id)
             ->whereIn('status', ['not_started', 'in_progress', 'paused'])
+            ->latest('id')
             ->first();
 
         if ($existingSession) {
@@ -63,7 +64,8 @@ class TestService
     }
 
     /**
-     * Reanudar una sesión de test pausada o en progreso
+     * Reanudar una sesión de test. La lógica de tiempo se ha eliminado
+     * para centralizarla en TimerService.
      */
     public function resumeTest(TestSession $session): TestSession
     {
@@ -71,24 +73,11 @@ class TestService
             throw new \Exception('Esta sesión ya ha sido completada.');
         }
 
-        if ($session->last_activity_at) {
-            $elapsedSinceLastActivity = now()->diffInSeconds($session->last_activity_at);
-            $newElapsedTime = $session->elapsed_time + $elapsedSinceLastActivity;
-            $newRemainingTime = max(0, $session->time_limit - $newElapsedTime);
-
-            $session->update([
-                'elapsed_time' => $newElapsedTime,
-                'remaining_time' => $newRemainingTime,
-                'last_activity_at' => now(),
-                'status' => $newRemainingTime > 0 ? 'in_progress' : 'timeout',
-            ]);
-
-            if ($newRemainingTime <= 0) {
-                return $this->completeTest($session, 'timeout');
-            }
+        if ($session->remaining_time <= 0 && $session->status !== 'timeout') {
+             return $this->completeTest($session, 'timeout');
         }
 
-        return $session->fresh();
+        return $session;
     }
 
     /**
@@ -176,9 +165,8 @@ class TestService
         
         $answer->save();
 
-        $session->update([
-            'last_activity_at' => now(),
-        ]);
+        // ELIMINADO: La actualización de 'last_activity_at' aquí era incorrecta.
+        // $session->update(['last_activity_at' => now()]);
 
         return $answer;
     }
@@ -193,7 +181,7 @@ class TestService
         if ($nextQuestion) {
             $session->update([
                 'current_question_id' => $nextQuestion->id,
-                'last_activity_at' => now(),
+                // ELIMINADO: La actualización de 'last_activity_at' aquí era incorrecta.
             ]);
             return true;
         }
@@ -243,35 +231,19 @@ class TestService
     }
 
     /**
-     * Actualizar tiempo restante de la sesión
+     * Obtener progreso del test. Ahora sincronizado con la pregunta actual.
      */
-    public function updateRemainingTime(TestSession $session, int $elapsedSeconds): void
-    {
-        $newRemainingTime = max(0, $session->time_limit - $elapsedSeconds);
-
-        $session->update([
-            'elapsed_time' => $elapsedSeconds,
-            'remaining_time' => $newRemainingTime,
-            'last_activity_at' => now(),
-        ]);
-
-        if ($newRemainingTime <= 0 && $session->status === 'in_progress') {
-            $this->completeTest($session, 'timeout');
-        }
-    }
-
-    /**
-     * Obtener progreso del test
-     */
-    public function getProgress(TestSession $session): array
+    public function getProgress(TestSession $session, TestQuestion $question): array
     {
         $totalQuestions = 60;
         $answeredCount = TestAnswer::where('test_session_id', $session->id)->count();
+        $currentDisplay = min($totalQuestions, $answeredCount + 1);
 
         return [
             'total' => $totalQuestions,
             'answered' => $answeredCount,
             'remaining' => $totalQuestions - $answeredCount,
+            'current_display' => $currentDisplay,
             'percentage' => $totalQuestions > 0
                 ? round(($answeredCount / $totalQuestions) * 100, 2)
                 : 0.0,

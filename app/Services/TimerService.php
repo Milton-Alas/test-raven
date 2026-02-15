@@ -23,36 +23,44 @@ class TimerService
     }
 
     /**
-     * Actualizar tiempo en DB y devolver el restante
+     * Actualizar tiempo en DB y devolver el restante.
+     * Esta es la nueva lógica de cuenta atrás.
      */
     public function updateTiming(TestSession $session): int
     {
+        $timeLimit = (int) ($session->time_limit ?? 2700);
+        $persistedRemaining = is_null($session->remaining_time)
+            ? $timeLimit
+            : (int) $session->remaining_time;
+
         if (in_array($session->status, ['completed', 'timeout'], true)) {
-            return 0;
+            return max(0, min($timeLimit, $persistedRemaining));
         }
 
-        if (!$session->started_at) {
-            return (int) $session->time_limit;
-        }
+        $startedAt = $session->started_at ?? $session->created_at ?? now();
+        $elapsedFromStart = now()->diffInSeconds($startedAt);
+        $calculatedRemaining = max(0, $timeLimit - $elapsedFromStart);
 
-        $totalSeconds = (int) $session->time_limit;
-        $elapsedFromStart = now()->diffInSeconds($session->started_at);
-        $remaining = max(0, $totalSeconds - $elapsedFromStart);
+        // Nunca permitir que el tiempo "suba" por datos inconsistentes.
+        $newRemaining = min($persistedRemaining, $calculatedRemaining);
+        $totalElapsedTime = $timeLimit - $newRemaining;
 
         $updates = [
-            'elapsed_time' => $elapsedFromStart,
-            'remaining_time' => $remaining,
+            'remaining_time' => $newRemaining,
+            'elapsed_time' => $totalElapsedTime,
             'last_activity_at' => now(),
         ];
 
-        if ($remaining <= 0) {
+        if ($newRemaining <= 0) {
             $updates['status'] = 'timeout';
-            $updates['completed_at'] = now();
+            if (!$session->completed_at) {
+                $updates['completed_at'] = now();
+            }
         }
 
         $session->update($updates);
 
-        return $remaining;
+        return $newRemaining;
     }
 
     /**
@@ -70,8 +78,9 @@ class TimerService
      */
     public function getTimerData(TestSession $session): array
     {
-        $remainingSeconds = $this->updateTiming($session);
-        $totalSeconds = (int) $session->time_limit;
+        $freshSession = $session->fresh();
+        $remainingSeconds = $this->updateTiming($freshSession);
+        $totalSeconds = (int) ($freshSession->time_limit ?? 2700);
         $elapsedSeconds = max(0, $totalSeconds - $remainingSeconds);
         $percentageRemaining = $totalSeconds > 0
             ? round(($remainingSeconds / $totalSeconds) * 100, 2)
