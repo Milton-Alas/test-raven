@@ -22,10 +22,8 @@ class TestResult extends Model
         'percentile',
         'diagnostic_range',
         'diagnostic_label',
-        'discrepancy',
         'is_valid',
         'validity_notes',
-        'expected_score',
         'score_distribution',
         'total_time_seconds',
         'average_time_per_question',
@@ -39,7 +37,6 @@ class TestResult extends Model
             'is_valid' => 'boolean',
             'score_distribution' => 'array',
             'calculated_at' => 'datetime',
-            'discrepancy' => 'decimal:2',
         ];
     }
 

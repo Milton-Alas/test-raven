@@ -14,9 +14,6 @@ class PercentileTable extends Model
         'age_max',
         'raw_score',
         'percentile',
-        'diagnostic_range',
-        'diagnostic_label',
-        'equivalent_score',
         'norm_group',
         'norm_year',
         'is_active',
@@ -46,28 +43,14 @@ class PercentileTable extends Model
         return $query->where('raw_score', $score);
     }
 
-    public function scopeForNormGroup($query, string $normGroup = 'general')
+    public function scopeForNormGroup($query, string $normGroup = 'montevideo')
     {
         return $query->where('norm_group', $normGroup);
-    }
-
-    public function scopeForAgeAndScore($query, int $age, int $score, string $normGroup = 'general')
-    {
-        return $query->forAge($age)
-                     ->forScore($score)
-                     ->forNormGroup($normGroup)
-                     ->active();
     }
 
     // Accessors
     public function getAgeRangeAttribute(): string
     {
         return "{$this->age_min}-{$this->age_max}";
-    }
-
-    public function getDiagnosticRangeRomanAttribute(): string
-    {
-        $romans = [1 => 'I', 2 => 'II', 3 => 'III', 4 => 'IV', 5 => 'V'];
-        return $romans[$this->diagnostic_range] ?? '';
     }
 }

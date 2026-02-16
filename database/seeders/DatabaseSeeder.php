@@ -24,6 +24,9 @@ class DatabaseSeeder extends Seeder
 
         $this->call([
             RavenTestSeeder::class,
+            PercentileTableSeeder::class,
+            DiagnosticRangeSeeder::class,
+            DiscrepancyPatternSeeder::class,
         ]);
     }
 }
