@@ -21,6 +21,19 @@ class TimerService
     {
         return $this->getRemainingTime($session) <= 0;
     }
+    
+    /**
+     * Deducir tiempo de la sesión (ej. al guardar una respuesta)
+     */
+    public function deductTime(TestSession $session, int $secondsToDeduct): int
+    {
+        $currentRemaining = $this->getRemainingTime($session);
+        $newRemaining = max(0, $currentRemaining - $secondsToDeduct);
+
+        $session->update(['remaining_time' => $newRemaining]);
+
+        return $newRemaining;
+    }
 
     /**
      * Actualizar tiempo en DB y devolver el restante.
@@ -28,7 +41,10 @@ class TimerService
      */
     public function updateTiming(TestSession $session): int
     {
-        $timeLimit = (int) ($session->time_limit ?? 2700);
+        /*2700 segundos = 45 minutos produccion 
+        * 600 segundos = 10 minuto test
+        */
+        $timeLimit = (int) ($session->time_limit ?? 600); 
         $persistedRemaining = is_null($session->remaining_time)
             ? $timeLimit
             : (int) $session->remaining_time;
@@ -52,10 +68,7 @@ class TimerService
         ];
 
         if ($newRemaining <= 0) {
-            $updates['status'] = 'timeout';
-            if (!$session->completed_at) {
-                $updates['completed_at'] = now();
-            }
+            $updates['remaining_time'] = 0;
         }
 
         $session->update($updates);
@@ -80,7 +93,10 @@ class TimerService
     {
         $freshSession = $session->fresh();
         $remainingSeconds = $this->updateTiming($freshSession);
-        $totalSeconds = (int) ($freshSession->time_limit ?? 2700);
+        /*2700 segundos = 45 minutos produccion 
+        * 600 segundos = 10 minuto test
+        */
+        $totalSeconds = (int) ($freshSession->time_limit ?? 600);
         $elapsedSeconds = max(0, $totalSeconds - $remainingSeconds);
         $percentageRemaining = $totalSeconds > 0
             ? round(($remainingSeconds / $totalSeconds) * 100, 2)

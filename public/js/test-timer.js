@@ -13,6 +13,7 @@ class TestTimer {
             csrfTokenInput: document.getElementById('csrf-token'),
             saveAnswerUrlInput: document.getElementById('save-answer-url'),
             timerUrlInput: document.getElementById('timer-url'),
+            timeoutUrlInput: document.getElementById('timeout-url'),
             completedUrlInput: document.getElementById('completed-url'),
         };
 
@@ -197,15 +198,37 @@ class TestTimer {
         }
     }
 
-    handleTimeout() {
+    async handleTimeout() {
         clearInterval(this.state.timerId);
-        if (!this.state.isSaving) { // Evitar múltiples alertas/redirecciones
-            this.state.isSaving = true; // Prevenir más acciones
-            this.clearStoredRemainingSeconds();
-            alert('El tiempo se ha agotado. Serás redirigido a la página de resultados.');
-            window.location.href = this.elements.completedUrlInput.value;
+        if (this.state.isSaving) return;
+    
+        this.state.isSaving = true;
+        this.clearStoredRemainingSeconds();
+    
+        try {
+            const response = await fetch(this.elements.timeoutUrlInput.value, {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                    'X-CSRF-TOKEN': this.elements.csrfTokenInput.value,
+                },
+            });
+    
+            const result = await response.json();
+    
+            if (response.ok && result.redirect) {
+                window.location.href = result.redirect;
+            } else {
+                throw new Error(result.message || 'Error al finalizar');
+            }
+    
+        } catch (error) {
+            console.error('Timeout error:', error);
+            alert('El tiempo se ha agotado. Hubo un error al finalizar la prueba automáticamente. Por favor, recarga la página.');
+            this.state.isSaving = false;
         }
     }
+    
 
     getStoredRemainingSeconds() {
         const rawValue = sessionStorage.getItem(this.storageKey);

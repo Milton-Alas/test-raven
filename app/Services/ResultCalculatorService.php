@@ -16,8 +16,17 @@ class ResultCalculatorService
     /**
      * Calcular todos los resultados del test
      */
-    public function calculateResult(TestSession $session): TestResult
+    public function calculateResult(TestSession $session): ?TestResult
     {
+        // CORRECCIÓN: Asegurar que la sesión esté finalizada (por tiempo o completitud)
+        if (!in_array($session->status, ['completed', 'timeout'])) {
+            Log::warning('Se intentó calcular el resultado para una sesión no finalizada.', [
+                'session_id' => $session->id,
+                'status' => $session->status,
+            ]);
+            return null;
+        }
+
         DB::beginTransaction();
 
         try {
@@ -54,7 +63,7 @@ class ResultCalculatorService
                     'diagnostic_range' => $diagnostic['range_number'],
                     'diagnostic_label' => $diagnostic['diagnostic_label'],
                     'is_valid' => $discrepancyCheck['is_valid'],
-                    'validity_notes' => $discrepancyCheck['notes'],
+                    'validity_notes' => $discrepancyCheck['notes'] ?? '',
                     'total_time_seconds' => $timeData['total_seconds'],
                     'average_time_per_question' => $timeData['average_per_question'],
                     'score_distribution' => $this->getScoreDistribution($session),

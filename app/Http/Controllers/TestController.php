@@ -58,6 +58,12 @@ class TestController extends Controller
             return redirect()->route('candidate.test.welcome');
         }
 
+        // CORRECCIÓN 5: Verificación de timeout a nivel de backend
+        if ($this->timerService->hasTimedOut($session)) {
+            $this->testService->completeTest($session, 'timeout');
+            return redirect()->route('candidate.test.completed');
+        }
+
         if ($session->is_completed) {
             return redirect()->route('candidate.test.completed');
         }
@@ -100,7 +106,6 @@ class TestController extends Controller
             $maxAnswers = in_array($seriesCode, ['C', 'D', 'E']) ? 8 : 6;
         }
 
-        // Se elimina la validación para 'elapsed_time'
         $request->validate([
             'question_id' => 'required|exists:test_questions,id',
             'answer' => 'required|integer|min:1|max:' . $maxAnswers,
@@ -122,34 +127,50 @@ class TestController extends Controller
         }
 
         try {
-            // Se elimina la actualización de tiempo redundante.
-            // El TimerService ahora es la única fuente de verdad.
-
+            // Chequeo PREVIO de timeout. Si ya se acabó el tiempo, no guardar.
             if ($this->timerService->hasTimedOut($session->fresh())) {
                 $this->testService->completeTest($session, 'timeout');
-
                 return response()->json([
                     'success' => false,
                     'timeout' => true,
-                    'message' => 'El tiempo se ha agotado.',
+                    'message' => 'El tiempo ya se había agotado. No se pudo guardar la respuesta.',
                     'redirect' => route('candidate.test.completed'),
                 ]);
             }
 
+            // 1. Guardar la respuesta PRIMERO.
+            $timeSpent = (int) ($request->time_spent ?? 0);
             $question = TestQuestion::findOrFail($request->question_id);
             $this->testService->saveAnswer(
                 $session,
                 $question,
                 (int) $request->answer,
-                (int) ($request->time_spent ?? 0)
+                $timeSpent
             );
 
-            $hasNext = $this->testService->moveToNextQuestion($session->fresh());
-            $isComplete = $this->testService->isTestComplete($session->fresh());
+            // 2. Deducir tiempo y refrescar la sesión.
+            $this->timerService->deductTime($session, $timeSpent);
+            $freshSession = $session->fresh();
 
+            // 3. Revisar si el test terminó DESPUÉS de guardar la respuesta.
+            $hasNext = $this->testService->moveToNextQuestion($freshSession);
+            $isComplete = $this->testService->isTestComplete($freshSession);
+
+            // Chequeo de timeout POSTERIOR al guardado
+            if ($this->timerService->hasTimedOut($freshSession)) {
+                $this->testService->completeTest($freshSession, 'timeout');
+                return response()->json([
+                    'success' => true, // La respuesta se guardó
+                    'completed' => true,
+                    'timeout' => true,
+                    'message' => 'Respuesta guardada, pero el tiempo del test ha finalizado.',
+                    'redirect' => route('candidate.test.completed'),
+                ]);
+            }
+            
+            // Chequeo de completitud normal
             if ($isComplete || !$hasNext) {
-                $this->testService->completeTest($session);
-
+                $this->testService->completeTest($freshSession);
                 return response()->json([
                     'success' => true,
                     'completed' => true,
@@ -158,17 +179,56 @@ class TestController extends Controller
                 ]);
             }
 
+            // Si nada de lo anterior ocurrió, es una respuesta normal.
             return response()->json([
                 'success' => true,
                 'completed' => false,
                 'message' => 'Respuesta guardada.',
             ]);
+            
         } catch (\Exception $e) {
             Log::error('Error al guardar respuesta: ' . $e->getMessage());
 
             return response()->json([
                 'success' => false,
                 'message' => 'Error al guardar la respuesta.',
+            ], 500);
+        }
+    }
+
+    /**
+     * Manejar el timeout del test (AJAX)
+     */
+    public function handleTimeout(Request $request): JsonResponse
+    {
+        $candidate = Auth::guard('candidate')->user();
+
+        $session = $candidate->testSession()
+            ->whereIn('status', ['in_progress', 'paused'])
+            ->latest('id')
+            ->first();
+
+        if (!$session) {
+            return response()->json([
+                'success' => false,
+                'message' => 'No hay sesión activa.'
+            ], 404);
+        }
+
+        try {
+            $this->testService->completeTest($session, 'timeout');
+
+            return response()->json([
+                'success' => true,
+                'redirect' => route('candidate.test.completed')
+            ]);
+
+        } catch (\Exception $e) {
+            Log::error('Error al finalizar test por timeout: ' . $e->getMessage());
+
+            return response()->json([
+                'success' => false,
+                'message' => 'Error interno.'
             ], 500);
         }
     }

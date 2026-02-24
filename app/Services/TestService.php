@@ -12,26 +12,48 @@ use Illuminate\Support\Facades\Log;
 class TestService
 {
     /**
-     * Iniciar una nueva sesión de test para un candidato
+     * Iniciar una nueva sesión de test para un candidato, con validaciones robustas.
      */
     public function startTest(Candidate $candidate): TestSession
     {
         if ($candidate->test_completed) {
-            throw new \Exception('El candidato ya ha completado el test.');
+            throw new \Exception('Ya has completado este test.');
         }
 
-        $existingSession = TestSession::where('candidate_id', $candidate->id)
-            ->whereIn('status', ['not_started', 'in_progress', 'paused'])
-            ->latest('id')
-            ->first();
+        // Buscamos la última sesión del candidato, sin importar el estado.
+        $lastSession = $candidate->testSession()->latest('id')->first();
 
-        if ($existingSession) {
-            return $this->resumeTest($existingSession);
+        if ($lastSession) {
+            $status = $lastSession->status;
+
+            // Si la última sesión ya fue completada o expiró, no se puede iniciar otra.
+            if (in_array($status, ['completed', 'timeout'])) {
+                // Aseguramos que el estado del candidato sea consistente.
+                if (!$candidate->test_completed) {
+                    $candidate->update([
+                        'test_completed' => true,
+                        'test_completed_at' => $lastSession->completed_at ?? now()
+                    ]);
+                }
+                throw new \Exception('Ya has completado este test y no puedes iniciarlo de nuevo.');
+            }
+
+            // Si la sesión está activa, la reanudamos.
+            if (in_array($status, ['in_progress', 'paused', 'not_started'])) {
+                // Doble verificación: si el tiempo se agotó, finalizarlo ahora.
+                $timer = app(TimerService::class);
+                if ($timer->hasTimedOut($lastSession->fresh())) {
+                    $this->completeTest($lastSession, 'timeout');
+                    throw new \Exception('El tiempo para realizar el test ha expirado.');
+                }
+                return $this->resumeTest($lastSession);
+            }
         }
 
+        // Si no hay ninguna sesión, creamos una nueva.
         $firstQuestion = TestQuestion::ordered()->first();
         if (!$firstQuestion) {
-            throw new \Exception('No hay preguntas disponibles.');
+            throw new \Exception('No hay preguntas disponibles para iniciar el test.');
         }
 
         $session = TestSession::create([
@@ -40,8 +62,8 @@ class TestService
             'started_at' => now(),
             'last_activity_at' => now(),
             'elapsed_time' => 0,
-            'time_limit' => 2700,
-            'remaining_time' => 2700,
+            'time_limit' => 600, //  2700 segundo produccion 600 test
+            'remaining_time' => 600, //  2700 segundo produccion 600 test
             'status' => 'in_progress',
             'ip_address' => request()->ip(),
             'user_agent' => request()->userAgent(),
@@ -51,9 +73,7 @@ class TestService
             ],
         ]);
 
-        $candidate->update([
-            'test_started_at' => now(),
-        ]);
+        $candidate->update(['test_started_at' => now()]);
 
         Log::info('Test iniciado', [
             'candidate_id' => $candidate->id,
@@ -165,9 +185,6 @@ class TestService
         
         $answer->save();
 
-        // ELIMINADO: La actualización de 'last_activity_at' aquí era incorrecta.
-        // $session->update(['last_activity_at' => now()]);
-
         return $answer;
     }
 
@@ -181,7 +198,6 @@ class TestService
         if ($nextQuestion) {
             $session->update([
                 'current_question_id' => $nextQuestion->id,
-                // ELIMINADO: La actualización de 'last_activity_at' aquí era incorrecta.
             ]);
             return true;
         }
@@ -194,40 +210,51 @@ class TestService
      */
     public function completeTest(TestSession $session, string $reason = 'completed'): TestSession
     {
-        DB::beginTransaction();
-
-        try {
-            $session->update([
+        // Paso 1: Marcar la sesión como completada (fuera de la transacción de cálculo)
+        // Esto es crítico para asegurar que el estado del test se actualice incluso si el cálculo falla.
+        if (!in_array($session->status, ['completed', 'timeout'])) {
+            $updates = [
                 'completed_at' => now(),
                 'status' => $reason,
                 'last_activity_at' => now(),
-            ]);
-
+            ];
+    
+            if ($reason === 'timeout') {
+                $updates['remaining_time'] = 0;
+            }
+    
+            $session->update($updates);
+    
             $session->candidate->update([
                 'test_completed' => true,
                 'test_completed_at' => now(),
             ]);
 
-            $resultCalculator = app(ResultCalculatorService::class);
-            $resultCalculator->calculateResult($session);
-
-            DB::commit();
-
-            Log::info('Test completado', [
+            Log::info('Test marcado como finalizado.', [
                 'candidate_id' => $session->candidate_id,
                 'session_id' => $session->id,
                 'reason' => $reason,
             ]);
+        }
 
-            return $session->fresh();
+        // Paso 2: Intentar calcular los resultados en un proceso separado y transaccional.
+        // Si esto falla, no afectará el estado 'completado' del test.
+        try {
+            $resultCalculator = app(ResultCalculatorService::class);
+            // Usamos fresh() para asegurar que el calculador recibe el estado 'completed'/'timeout' que acabamos de guardar
+            $resultCalculator->calculateResult($session->fresh());
+
         } catch (\Exception $e) {
-            DB::rollBack();
-            Log::error('Error al completar test', [
+            Log::error('El cálculo de resultados falló DESPUÉS de finalizar la sesión.', [
                 'session_id' => $session->id,
                 'error' => $e->getMessage(),
+                'trace' => $e->getTraceAsString(), // Log more details
             ]);
-            throw $e;
+            // No relanzamos la excepción para no romper el flujo del controlador.
+            // El test ya está marcado como completado, que es lo más importante.
         }
+
+        return $session->fresh();
     }
 
     /**

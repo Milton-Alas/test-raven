@@ -35,6 +35,8 @@ Route::middleware('auth:candidate')->group(function () {
         ->name('candidate.test.question');
     Route::post('/test/answer', [TestController::class, 'saveAnswer'])
         ->name('candidate.test.answer');
+    Route::post('/test/timeout', [TestController::class, 'handleTimeout'])
+        ->name('candidate.test.timeout');
     Route::get('/test/timer', [TestController::class, 'getTimerData'])
         ->name('candidate.test.timer');
 

@@ -162,6 +162,7 @@
 <input type="hidden" id="csrf-token" value="{{ csrf_token() }}">
 <input type="hidden" id="save-answer-url" value="{{ route('candidate.test.answer') }}">
 <input type="hidden" id="timer-url" value="{{ route('candidate.test.timer') }}">
+<input type="hidden" id="timeout-url" value="{{ route('candidate.test.timeout') }}">
 <input type="hidden" id="completed-url" value="{{ route('candidate.test.completed') }}">
 @endsection
 
