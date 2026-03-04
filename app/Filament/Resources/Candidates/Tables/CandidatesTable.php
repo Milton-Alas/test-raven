@@ -27,10 +27,15 @@ class CandidatesTable
         return $table
             ->columns([
                 TextColumn::make('name')
-                ->label('Nombre del Candidato')
+                ->label('Nombre')
                 ->searchable()
                 ->sortable()
                 ->weight('bold'),
+
+                TextColumn::make('dui_nit')
+                    ->label('DUI/NIT')
+                    ->searchable()
+                    ->sortable(),
 
                 TextColumn::make('email')
                     ->label('Correo Electrónico')
@@ -63,6 +68,17 @@ class CandidatesTable
                         $state > 0 => 'danger',
                         default => 'gray',
                     })
+                    ->alignCenter(),
+
+                TextColumn::make('latestTestResult.diagnostic_label')
+                    ->label('Diagnóstico')
+                    ->weight('bold')
+                    ->placeholder('-'),
+
+                TextColumn::make('latestTestResult.total_score')
+                    ->label('Puntaje Total')
+                    ->placeholder('-')
+                    ->sortable()
                     ->alignCenter(),
 
                 IconColumn::make('is_active')

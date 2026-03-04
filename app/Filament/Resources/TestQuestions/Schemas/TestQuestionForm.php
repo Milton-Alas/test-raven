@@ -67,7 +67,7 @@ class TestQuestionForm
                 ->description('Gestione las alternativas que se presentarán al candidato.')
                 ->schema([
                     Repeater::make('answerOptions')
-                        ->relationship('options') // Asegúrate que la relación sea 'options' en tu modelo
+                        ->relationship('answerOptions') 
                         ->schema([
                             TextInput::make('option_number')
                                 ->label('Nº')

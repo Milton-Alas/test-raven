@@ -36,18 +36,38 @@ class TestQuestionsTable
                     ->description(fn ($record) => "Serie {$record->series?->code}")
                     ->alignCenter(),
 
-                ImageColumn::make('matrix_image_path')
+                /*ImageColumn::make('matrix_image_path')
                     ->label('Matriz')
                     ->square() // Las matrices de Raven suelen ser cuadradas, se ven mejor así que circulares
                     ->size(50)
-                    ->extraImgAttributes(['class' => 'rounded shadow-sm']),
-
-                TextColumn::make('options_count')
+                    ->extraImgAttributes(['class' => 'rounded shadow-sm']),*/
+                    ImageColumn::make('matrix_image_path')
+                    ->label('Matriz')
+                    ->disk('public')
+                    ->state(fn ($record) => $record->matrix_image_path ? "test-images/{$record->matrix_image_path}" : null)
+                    ->square()
+                    ->size(60)
+                    ->extraImgAttributes(['class' => 'rounded shadow-sm border border-gray-200']),   
+                /*TextColumn::make('options_count')
                     ->label('Opciones')
                     //->counts('options') // Asumiendo que la relación es 'options'
                     ->badge()
                     ->color(fn ($state): string => $state < 4 ? 'danger' : 'gray')
-                    ->alignCenter(),
+                    ->alignCenter(),*/
+                  /*  TextColumn::make('answer_options_count') // El nombre automático de Filament para counts('answerOptions')
+                    ->label('Opciones')
+                    ->counts('answerOptions') // Nombre exacto de la relación en tu modelo TestQuestion
+                    ->badge()
+                    ->color(fn ($state, $record): string => 
+                        // Lógica inteligente: Series A,B deben tener 6. C,D,E deben tener 8.
+                        in_array($record->series->code, ['A', 'B']) 
+                            ? ($state === 6 ? 'success' : 'danger')
+                            : ($state === 8 ? 'success' : 'danger')
+                    )
+                    ->description(fn ($record): string => 
+                        in_array($record->series->code, ['A', 'B']) ? 'Req: 6' : 'Req: 8'
+                    )
+                    ->alignCenter(),*/
 
                 TextColumn::make('correct_answer')
                     ->label('Clave')
