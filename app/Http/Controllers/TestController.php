@@ -58,7 +58,7 @@ class TestController extends Controller
             return redirect()->route('candidate.test.welcome');
         }
 
-        // CORRECCIÓN 5: Verificación de timeout a nivel de backend
+        // Verificación de timeout a nivel de backend
         if ($this->timerService->hasTimedOut($session)) {
             $this->testService->completeTest($session, 'timeout');
             return redirect()->route('candidate.test.completed');
@@ -82,8 +82,8 @@ class TestController extends Controller
             return redirect()->route('candidate.test.completed');
         }
 
+        // getTimerData hace fresh() internamente: siempre lee el started_at más reciente.
         $timerData = $this->timerService->getTimerData($session);
-        // Modificado para pasar la pregunta al método getProgress
         $progress = $this->testService->getProgress($session, $question);
 
         return view('candidate.test.question', compact(
@@ -110,6 +110,7 @@ class TestController extends Controller
             'question_id' => 'required|exists:test_questions,id',
             'answer' => 'required|integer|min:1|max:' . $maxAnswers,
             'time_spent' => 'nullable|integer',
+            'remaining_time' => 'nullable|integer|min:0',
         ]);
 
         /** @var Candidate $candidate */
@@ -127,6 +128,14 @@ class TestController extends Controller
         }
 
         try {
+            $clientRemainingTime = $request->filled('remaining_time')
+                ? (int) $request->remaining_time
+                : null;
+
+            // Sincronizamos el reloj con el menor tiempo conocido antes de validar/guardar.
+            $session = $session->fresh();
+            $this->timerService->syncTiming($session, $clientRemainingTime);
+
             // Chequeo PREVIO de timeout. Si ya se acabó el tiempo, no guardar.
             if ($this->timerService->hasTimedOut($session->fresh())) {
                 $this->testService->completeTest($session, 'timeout');
@@ -148,8 +157,8 @@ class TestController extends Controller
                 $timeSpent
             );
 
-            // 2. Deducir tiempo y refrescar la sesión.
-            $this->timerService->deductTime($session, $timeSpent);
+            // 2. Refrescar la sesión (el tiempo ya se descuenta automáticamente
+            //    por updateTiming via started_at; no hay que deducirlo manualmente).
             $freshSession = $session->fresh();
 
             // 3. Revisar si el test terminó DESPUÉS de guardar la respuesta.
@@ -160,14 +169,14 @@ class TestController extends Controller
             if ($this->timerService->hasTimedOut($freshSession)) {
                 $this->testService->completeTest($freshSession, 'timeout');
                 return response()->json([
-                    'success' => true, // La respuesta se guardó
+                    'success' => true,
                     'completed' => true,
                     'timeout' => true,
                     'message' => 'Respuesta guardada, pero el tiempo del test ha finalizado.',
                     'redirect' => route('candidate.test.completed'),
                 ]);
             }
-            
+
             // Chequeo de completitud normal
             if ($isComplete || !$hasNext) {
                 $this->testService->completeTest($freshSession);
@@ -185,7 +194,7 @@ class TestController extends Controller
                 'completed' => false,
                 'message' => 'Respuesta guardada.',
             ]);
-            
+
         } catch (\Exception $e) {
             Log::error('Error al guardar respuesta: ' . $e->getMessage());
 

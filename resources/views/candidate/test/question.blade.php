@@ -45,6 +45,7 @@
                 <div 
                     id="timer-display" 
                     class="text-3xl font-bold text-center px-6 py-2 rounded-lg shadow-md bg-slate-50 border-2 border-slate-300 tabular-nums min-w-[140px]"
+                    data-expires-at="{{ $timerData['expires_at'] }}"
                     data-remaining-seconds="{{ $timerData['remaining_seconds'] }}"
                 >
                     {{ $timerData['remaining_formatted'] }}

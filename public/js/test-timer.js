@@ -1,32 +1,46 @@
+/**
+ * TestTimer — Web Worker + Tiempo Absoluto
+ *
+ * El setInterval VIVE dentro de un Web Worker (hilo separado), por lo que
+ * el navegador no puede throttlearlo aunque la pestaña esté en segundo plano
+ * o el hilo principal esté ocupado renderizando.
+ *
+ * Dentro del worker también se usa tiempo absoluto:
+ *   remaining = initialSeconds - Math.floor((Date.now() - startTimestamp) / 1000)
+ *
+ * Esto elimina el drift acumulativo incluso si algún tick llega tarde.
+ *
+ * El servidor expone `expires_at` como ISO 8601 UTC en el atributo
+ * data-expires-at del elemento #timer-display.
+ */
 class TestTimer {
     constructor() {
         this.elements = {
-            timerDisplay: document.getElementById('timer-display'),
-            optionsGrid: document.getElementById('options-grid'),
-            nextBtn: document.getElementById('next-btn'),
-            btnText: document.getElementById('btn-text'),
-            btnArrow: document.getElementById('btn-arrow'),
-            btnLoading: document.getElementById('btn-loading'),
-            loadingOverlay: document.getElementById('loading-overlay'),
-            questionIdInput: document.getElementById('question-id'),
-            sessionIdInput: document.getElementById('session-id'),
-            csrfTokenInput: document.getElementById('csrf-token'),
-            saveAnswerUrlInput: document.getElementById('save-answer-url'),
-            timerUrlInput: document.getElementById('timer-url'),
-            timeoutUrlInput: document.getElementById('timeout-url'),
+            timerDisplay:      document.getElementById('timer-display'),
+            optionsGrid:       document.getElementById('options-grid'),
+            nextBtn:           document.getElementById('next-btn'),
+            btnText:           document.getElementById('btn-text'),
+            btnArrow:          document.getElementById('btn-arrow'),
+            btnLoading:        document.getElementById('btn-loading'),
+            loadingOverlay:    document.getElementById('loading-overlay'),
+            questionIdInput:   document.getElementById('question-id'),
+            sessionIdInput:    document.getElementById('session-id'),
+            csrfTokenInput:    document.getElementById('csrf-token'),
+            saveAnswerUrlInput:document.getElementById('save-answer-url'),
+            timerUrlInput:     document.getElementById('timer-url'),
+            timeoutUrlInput:   document.getElementById('timeout-url'),
             completedUrlInput: document.getElementById('completed-url'),
         };
 
         this.state = {
-            selectedOption: null,
-            timeRemaining: null,
-            questionStartRemaining: null,
-            timerId: null,
-            isSaving: false,
+            selectedOption:        null,
+            timeRemaining:         null,
+            questionStartRemaining:null,
+            isSaving:              false,
         };
 
-        const sessionId = this.elements.sessionIdInput ? this.elements.sessionIdInput.value : null;
-        this.storageKey = `test_timer_remaining_${sessionId || 'default'}`;
+        // Web Worker — hilo separado para el temporizador
+        this.worker = null;
 
         if (this.elements.timerDisplay && this.elements.optionsGrid) {
             this.init();
@@ -55,9 +69,7 @@ class TestTimer {
 
     selectOption(selectedCard) {
         const previouslySelected = this.elements.optionsGrid.querySelector('.selected');
-        if (previouslySelected) {
-            previouslySelected.classList.remove('selected');
-        }
+        if (previouslySelected) previouslySelected.classList.remove('selected');
 
         selectedCard.classList.add('selected');
         this.state.selectedOption = selectedCard.dataset.option;
@@ -67,58 +79,113 @@ class TestTimer {
         this.elements.btnArrow.classList.remove('hidden');
     }
 
-    initializeTimerFromDOM() {
-        const domSeconds = parseInt(this.elements.timerDisplay.dataset.remainingSeconds, 10);
-        const storedSeconds = this.getStoredRemainingSeconds();
-        let initialSeconds = !isNaN(domSeconds) ? domSeconds : 0;
+    // ─── Inicialización del Timer ─────────────────────────────────────────────
 
-        // Nunca permitir que el tiempo aumente entre recargas/preguntas.
-        if (storedSeconds !== null) {
-            initialSeconds = Math.min(initialSeconds, storedSeconds);
+    initializeTimerFromDOM() {
+        const expiresAtStr = this.elements.timerDisplay.dataset.expiresAt;
+
+        let initialSeconds = 0;
+
+        if (expiresAtStr) {
+            const expiresAtMs = new Date(expiresAtStr).getTime();
+            if (!isNaN(expiresAtMs)) {
+                initialSeconds = Math.max(0, Math.floor((expiresAtMs - Date.now()) / 1000));
+            }
         }
 
-        if (!isNaN(initialSeconds) && initialSeconds > 0) {
-            this.state.questionStartRemaining = initialSeconds;
-            this.startTimer(initialSeconds);
+        // Fallback: si no hay expires_at, usar remaining_seconds.
+        if (initialSeconds === 0) {
+            console.warn('[TestTimer] data-expires-at no encontrado, usando remaining_seconds como fallback.');
+            const domSeconds = parseInt(this.elements.timerDisplay.dataset.remainingSeconds, 10);
+            initialSeconds = !isNaN(domSeconds) && domSeconds > 0 ? domSeconds : 0;
+        }
+
+        this.state.questionStartRemaining = initialSeconds;
+
+        if (initialSeconds > 0) {
+            this.startWorkerTimer(initialSeconds);
         } else {
             this.state.timeRemaining = 0;
-            this.state.questionStartRemaining = 0;
-            this.updateTimerDisplay(); // Muestra 00:00
+            this.updateTimerDisplay();
             this.handleTimeout();
         }
     }
 
-    startTimer(initialSeconds) {
-        if (this.state.timerId) {
-            clearInterval(this.state.timerId);
-        }
+    // ─── Web Worker ──────────────────────────────────────────────────────────
 
+    startWorkerTimer(initialSeconds) {
+        // Detener worker previo si existiera
+        this.stopWorker();
+
+        // Render inmediato
         this.state.timeRemaining = initialSeconds;
-        this.storeRemainingSeconds(this.state.timeRemaining);
         this.updateTimerDisplay();
 
-        this.state.timerId = setInterval(() => {
-            this.state.timeRemaining--;
-            this.storeRemainingSeconds(this.state.timeRemaining);
+        if (typeof Worker === 'undefined') {
+            // Fallback para entornos sin soporte de Worker (raro en navegadores modernos)
+            console.warn('[TestTimer] Web Workers no soportados; usando setInterval en hilo principal.');
+            this._startFallbackInterval(initialSeconds);
+            return;
+        }
 
-            this.updateTimerDisplay();
+        this.worker = new Worker('/js/timer-worker.js');
 
-            if (this.state.timeRemaining <= 0) {
+        this.worker.onmessage = (e) => {
+            const { type, timeRemaining } = e.data;
+
+            if (type === 'TICK') {
+                this.state.timeRemaining = timeRemaining;
+                this.updateTimerDisplay();
+            }
+
+            if (type === 'TIMEOUT') {
+                this.stopWorker();
                 this.handleTimeout();
             }
-        }, 1000);
+        };
+
+        this.worker.onerror = (err) => {
+            console.error('[TestTimer] Worker error:', err);
+        };
+
+        this.worker.postMessage({ action: 'start', initialSeconds });
     }
+
+    stopWorker() {
+        if (this.worker) {
+            this.worker.postMessage({ action: 'stop' });
+            this.worker.terminate();
+            this.worker = null;
+        }
+    }
+
+    // Fallback sin Worker
+    _startFallbackInterval(initialSeconds) {
+        const startTimestamp = Date.now();
+        this._fallbackTimerId = setInterval(() => {
+            const elapsed = Math.floor((Date.now() - startTimestamp) / 1000);
+            const remaining = Math.max(0, initialSeconds - elapsed);
+            this.state.timeRemaining = remaining;
+            this.updateTimerDisplay();
+            if (remaining <= 0) {
+                clearInterval(this._fallbackTimerId);
+                this.handleTimeout();
+            }
+        }, 500);
+    }
+
+    // ─────────────────────────────────────────────────────────────────────────
 
     updateTimerDisplay() {
         if (!this.elements.timerDisplay) return;
 
-        const secondsToDisplay = Math.max(0, this.state.timeRemaining);
+        const secondsToDisplay = Math.max(0, this.state.timeRemaining ?? 0);
         const minutes = Math.floor(secondsToDisplay / 60);
         const seconds = secondsToDisplay % 60;
         this.elements.timerDisplay.textContent =
             `${String(minutes).padStart(2, '0')}:${String(seconds).padStart(2, '0')}`;
 
-        if (this.state.timeRemaining <= 300) { // 5 minutos
+        if (secondsToDisplay <= 300) {
             this.elements.timerDisplay.classList.add('text-ues-red');
         } else {
             this.elements.timerDisplay.classList.remove('text-ues-red');
@@ -128,8 +195,8 @@ class TestTimer {
     async saveAnswer() {
         if (this.state.isSaving) return;
         this.state.isSaving = true;
-        clearInterval(this.state.timerId); // Detener el timer al guardar
 
+        this.stopWorker();
         this.showLoadingState();
 
         const timeSpent = Math.max(
@@ -146,8 +213,9 @@ class TestTimer {
                 },
                 body: JSON.stringify({
                     question_id: this.elements.questionIdInput.value,
-                    answer: this.state.selectedOption,
-                    time_spent: timeSpent,
+                    answer:      this.state.selectedOption,
+                    time_spent:  timeSpent,
+                    remaining_time: Math.max(0, this.state.timeRemaining ?? 0),
                 }),
             });
 
@@ -155,14 +223,12 @@ class TestTimer {
 
             if (response.ok) {
                 if (result.completed || result.redirect) {
-                    this.clearStoredRemainingSeconds();
                     window.location.href = result.redirect || this.elements.completedUrlInput.value;
                 } else {
                     window.location.reload();
                 }
             } else {
                 if (result.timeout) {
-                    this.clearStoredRemainingSeconds();
                     window.location.href = result.redirect;
                 } else {
                     throw new Error(result.message || 'Error saving answer.');
@@ -171,7 +237,10 @@ class TestTimer {
         } catch (error) {
             console.error('Save answer error:', error);
             alert('Hubo un error al guardar tu respuesta. Por favor, intenta de nuevo.');
+            this.state.isSaving = false;
             this.hideLoadingState();
+            // Reanudar el timer si falla el guardado
+            this.startWorkerTimer(this.state.timeRemaining ?? 0);
         }
     }
 
@@ -184,7 +253,6 @@ class TestTimer {
     }
 
     hideLoadingState() {
-        this.state.isSaving = false;
         this.elements.loadingOverlay.classList.add('hidden');
         this.elements.btnLoading.classList.add('hidden');
 
@@ -199,12 +267,9 @@ class TestTimer {
     }
 
     async handleTimeout() {
-        clearInterval(this.state.timerId);
         if (this.state.isSaving) return;
-    
         this.state.isSaving = true;
-        this.clearStoredRemainingSeconds();
-    
+
         try {
             const response = await fetch(this.elements.timeoutUrlInput.value, {
                 method: 'POST',
@@ -213,40 +278,20 @@ class TestTimer {
                     'X-CSRF-TOKEN': this.elements.csrfTokenInput.value,
                 },
             });
-    
+
             const result = await response.json();
-    
+
             if (response.ok && result.redirect) {
                 window.location.href = result.redirect;
             } else {
                 throw new Error(result.message || 'Error al finalizar');
             }
-    
+
         } catch (error) {
             console.error('Timeout error:', error);
             alert('El tiempo se ha agotado. Hubo un error al finalizar la prueba automáticamente. Por favor, recarga la página.');
             this.state.isSaving = false;
         }
-    }
-    
-
-    getStoredRemainingSeconds() {
-        const rawValue = sessionStorage.getItem(this.storageKey);
-        if (!rawValue) {
-            return null;
-        }
-
-        const parsed = parseInt(rawValue, 10);
-        return Number.isInteger(parsed) && parsed >= 0 ? parsed : null;
-    }
-
-    storeRemainingSeconds(seconds) {
-        const safeSeconds = Math.max(0, parseInt(seconds, 10) || 0);
-        sessionStorage.setItem(this.storageKey, String(safeSeconds));
-    }
-
-    clearStoredRemainingSeconds() {
-        sessionStorage.removeItem(this.storageKey);
     }
 }
 
