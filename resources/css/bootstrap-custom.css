@@ -1,0 +1,36 @@
+/* Colores UES autorizados */
+:root {
+    --ues-rojo-principal: #C90019;
+    --ues-negro-principal: #1A171B;
+    --ues-blanco: #FFFFFF;
+    --ues-rojo-secundario: #8B0E13;
+    --ues-azul-secundario: #002E6A;
+    --ues-gris-secundario: #868789;
+  }
+  
+  /* Personalización de Botones Bootstrap */
+  .btn-ues-rojo {
+    background-color: var(--ues-rojo-secundario);
+    color: var(--ues-blanco);
+    border: none;
+    font-weight: bold;
+  }
+  
+  .btn-ues-rojo:hover {
+    background-color: var(--ues-rojo-principal); /* Rojo más oscuro al pasar el mouse */
+    color: var(--ues-blanco);
+  }
+  
+  /* Personalización de Enlaces */
+  .text-ues-rojo {
+    color: var(--ues-rojo-principal) !important;
+  }
+  
+  .text-ues-rojo:hover {
+    color: var(--ues-rojo-secundario) !important;
+  }
+  
+  /* Personalización de Textos e Iconos */
+  .text-ues-azul {
+    color: var(--ues-azul-secundario);
+  }
