@@ -10,15 +10,15 @@
   
   /* Personalización de Botones Bootstrap */
   .btn-ues-rojo {
-    background-color: var(--ues-rojo-secundario);
-    color: var(--ues-blanco);
-    border: none;
-    font-weight: bold;
+    background-color: var(--ues-rojo-secundario) !important;
+    color: var(--ues-blanco) !important;
+    border: none !important;
+    font-weight: bold !important;
   }
   
   .btn-ues-rojo:hover {
-    background-color: var(--ues-rojo-principal); /* Rojo más oscuro al pasar el mouse */
-    color: var(--ues-blanco);
+    background-color: var(--ues-rojo-principal) !important; /* Rojo más oscuro al pasar el mouse */
+    color: var(--ues-blanco) !important;
   }
   
   /* Personalización de Enlaces */
@@ -32,5 +32,16 @@
   
   /* Personalización de Textos e Iconos */
   .text-ues-azul {
-    color: var(--ues-azul-secundario);
+    color: var(--ues-azul-secundario) !important;
   }
+
+   /* Efecto de elevación para el botón */
+   .transform-hover {
+    transition: all 0.3s ease;
+}
+.transform-hover:hover {
+    transform: translateY(-3px);
+    box-shadow: 0 10px 20px rgba(201, 0, 25, 0.3) !important;
+}
+/* Color azul UES para el header si no está en tu CSS externo */
+.bg-ues-blue { background-color: #0047AB !important; }
