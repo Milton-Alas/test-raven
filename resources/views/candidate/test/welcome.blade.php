@@ -27,7 +27,7 @@
 
                 <div class="card-body p-4 p-md-5">
                     
-                    <div class="bg-light rounded-3 p-4 mb-4 border-start border-4 border-ues-gold shadow-sm">
+                    <div class="bg-light rounded-3 p-4 mb-4 border border-4 border-ues-gold shadow-sm">
                         <h3 class="h6 fw-bold text-ues-blue mb-3">
                             <i class="bi bi-person-badge-fill me-2"></i> Información del Candidato
                         </h3>
