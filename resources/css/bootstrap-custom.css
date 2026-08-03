@@ -1,0 +1,47 @@
+/* Colores UES autorizados */
+:root {
+    --ues-rojo-principal: #C90019;
+    --ues-negro-principal: #1A171B;
+    --ues-blanco: #FFFFFF;
+    --ues-rojo-secundario: #8B0E13;
+    --ues-azul-secundario: #002E6A;
+    --ues-gris-secundario: #868789;
+  }
+  
+  /* Personalización de Botones Bootstrap */
+  .btn-ues-rojo {
+    background-color: var(--ues-rojo-secundario) !important;
+    color: var(--ues-blanco) !important;
+    border: none !important;
+    font-weight: bold !important;
+  }
+  
+  .btn-ues-rojo:hover {
+    background-color: var(--ues-rojo-principal) !important; /* Rojo más oscuro al pasar el mouse */
+    color: var(--ues-blanco) !important;
+  }
+  
+  /* Personalización de Enlaces */
+  .text-ues-rojo {
+    color: var(--ues-rojo-principal) !important;
+  }
+  
+  .text-ues-rojo:hover {
+    color: var(--ues-rojo-secundario) !important;
+  }
+  
+  /* Personalización de Textos e Iconos */
+  .text-ues-azul {
+    color: var(--ues-azul-secundario) !important;
+  }
+
+   /* Efecto de elevación para el botón */
+   .transform-hover {
+    transition: all 0.3s ease;
+}
+.transform-hover:hover {
+    transform: translateY(-3px);
+    box-shadow: 0 10px 20px rgba(201, 0, 25, 0.3) !important;
+}
+/* Color azul UES para el header si no está en tu CSS externo */
+.bg-ues-blue { background-color: #0047AB !important; }

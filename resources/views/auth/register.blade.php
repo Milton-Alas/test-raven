@@ -4,156 +4,127 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Registro de Candidato</title>
-    <script src="https://cdn.tailwindcss.com"></script>
-    <script>
-        tailwind.config = {
-            theme: {
-                extend: {
-                    colors: {
-                        'ues-blue': '#0047AB',
-                        'ues-red': '#E60000',
-                        'ues-gold': '#FFCC00',
-                    }
-                }
-            }
+    
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.3/font/bootstrap-icons.min.css">
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+    
+    @vite(['resources/css/bootstrap-custom.css'])
+    
+    <style>
+        .section-divider {
+            border-left: 5px solid #FFCC00;
+            padding-left: 1.5rem;
+            margin-bottom: 2rem;
         }
-    </script>
+        .form-label { font-weight: 600; font-size: 0.9rem; color: #4b5563; }
+    </style>
 </head>
-<body class="bg-gray-50 flex items-center justify-center min-h-screen py-12">
+<body class="bg-light py-5">
 
-    <div class="w-full max-w-2xl px-8 py-10 my-8 bg-white rounded-xl shadow-lg">
-
-        <!-- Header -->
-        <div class="text-center mb-8">
-            <div class="w-16 h-16 bg-ues-blue rounded-full mx-auto mb-4 flex items-center justify-center">
-                <svg class="w-8 h-8 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M18 9v3m0 0v3m0-3h3m-3 0h-3m-2-5a4 4 0 11-8 0 4 4 0 018 0zM3 20a6 6 0 0112 0v1H3v-1z"></path>
-                </svg>
-            </div>
-            <h1 class="text-2xl font-bold text-ues-blue">Registro de Nuevo Candidato</h1>
-            <p class="text-gray-600 text-sm mt-2">Completa el formulario para crear tu cuenta</p>
-        </div>
-
-        <form method="POST" action="{{ route('register') }}" class="space-y-6">
-            @csrf
-
-            <!-- Sección: Información Personal -->
-            <div class="border-l-4 border-ues-gold pl-4 mb-6">
-                <h2 class="text-lg font-semibold text-gray-800 mb-4">Información Personal</h2>
+    <div class="container">
+        <div class="row justify-content-center">
+            <div class="col-12 col-md-10 col-lg-8">
                 
-                <div class="grid grid-cols-1 md:grid-cols-2 gap-5">
-                    <!-- Name -->
-                    <div class="md:col-span-2">
-                        <label for="name" class="block text-sm font-semibold text-gray-700 mb-2">Nombre Completo</label>
-                        <input id="name" type="text" name="name" value="{{ old('name') }}" required autofocus
-                               class="block w-full px-4 py-3 text-gray-900 bg-gray-50 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-ues-blue focus:border-transparent transition">
-                        @error('name')
-                            <p class="mt-2 text-sm text-ues-red">{{ $message }}</p>
-                        @enderror
-                    </div>
-
-                    <!-- Email -->
-                    <div>
-                        <label for="email" class="block text-sm font-semibold text-gray-700 mb-2">Correo Electrónico</label>
-                        <input id="email" type="email" name="email" value="{{ old('email') }}" required
-                               class="block w-full px-4 py-3 text-gray-900 bg-gray-50 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-ues-blue focus:border-transparent transition">
-                        @error('email')
-                            <p class="mt-2 text-sm text-ues-red">{{ $message }}</p>
-                        @enderror
-                    </div>
-
-                    <!-- DUI/NIT -->
-                    <div>
-                        <label for="dui_nit" class="block text-sm font-semibold text-gray-700 mb-2">DUI o NIT</label>
-                        <input id="dui_nit" type="text" name="dui_nit" value="{{ old('dui_nit') }}" required
-                               class="block w-full px-4 py-3 text-gray-900 bg-gray-50 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-ues-blue focus:border-transparent transition">
-                        @error('dui_nit')
-                            <p class="mt-2 text-sm text-ues-red">{{ $message }}</p>
-                        @enderror
-                    </div>
+                <div class="card shadow-lg border-0 rounded-4 p-4 p-md-5 bg-white">
                     
-                    <!-- Age -->
-                    <div>
-                        <label for="age" class="block text-sm font-semibold text-gray-700 mb-2">Edad</label>
-                        <input id="age" type="number" name="age" value="{{ old('age') }}" required
-                               class="block w-full px-4 py-3 text-gray-900 bg-gray-50 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-ues-blue focus:border-transparent transition">
-                        @error('age')
-                            <p class="mt-2 text-sm text-ues-red">{{ $message }}</p>
-                        @enderror
+                    <div class="text-center mb-5">
+                        <i class="bi bi-person-fill-add" style="font-size: 2.5rem;"></i>
+                        <h1 class="h3 fw-bold text-ues-blue">Registro de Nuevo Candidato</h1>
+                        <p class="text-muted">Completa el formulario para crear tu cuenta</p>
                     </div>
 
-                    <!-- Occupation -->
-                    <div>
-                        <label for="occupation" class="block text-sm font-semibold text-gray-700 mb-2">Ocupación</label>
-                        <input id="occupation" type="text" name="occupation" value="{{ old('occupation') }}" required
-                               class="block w-full px-4 py-3 text-gray-900 bg-gray-50 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-ues-blue focus:border-transparent transition">
-                        @error('occupation')
-                            <p class="mt-2 text-sm text-ues-red">{{ $message }}</p>
-                        @enderror
+                    <form method="POST" action="{{ route('register') }}">
+                        @csrf
+
+                        <div class="section-divider">
+                            <h2 class="h5 fw-bold mb-4 text-dark">Información Personal</h2>
+                            
+                            <div class="row g-3">
+                                <div class="col-12">
+                                    <label for="name" class="form-label">Nombre Completo</label>
+                                    <input id="name" type="text" name="name" value="{{ old('name') }}" required 
+                                           class="form-control form-control-lg @error('name') is-invalid @enderror">
+                                    @error('name') <div class="invalid-feedback">{{ $message }}</div> @enderror
+                                </div>
+
+                                <div class="col-md-6">
+                                    <label for="email" class="form-label">Correo Electrónico</label>
+                                    <input id="email" type="email" name="email" value="{{ old('email') }}" required 
+                                           class="form-control form-control-lg @error('email') is-invalid @enderror">
+                                    @error('email') <div class="invalid-feedback">{{ $message }}</div> @enderror
+                                </div>
+
+                                <div class="col-md-6">
+                                    <label for="dui_nit" class="form-label">DUI o NIT</label>
+                                    <input id="dui_nit" type="text" name="dui_nit" value="{{ old('dui_nit') }}" required 
+                                           class="form-control form-control-lg @error('dui_nit') is-invalid @enderror">
+                                    @error('dui_nit') <div class="invalid-feedback">{{ $message }}</div> @enderror
+                                </div>
+
+                                <div class="col-md-6">
+                                    <label for="age" class="form-label">Edad</label>
+                                    <input id="age" type="number" name="age" value="{{ old('age') }}" required 
+                                           class="form-control form-control-lg @error('age') is-invalid @enderror">
+                                    @error('age') <div class="invalid-feedback">{{ $message }}</div> @enderror
+                                </div>
+
+                                <div class="col-md-6">
+                                    <label for="occupation" class="form-label">Ocupación</label>
+                                    <input id="occupation" type="text" name="occupation" value="{{ old('occupation') }}" required 
+                                           class="form-control form-control-lg @error('occupation') is-invalid @enderror">
+                                    @error('occupation') <div class="invalid-feedback">{{ $message }}</div> @enderror
+                                </div>
+                            </div>
+                        </div>
+
+                        <div class="section-divider">
+                            <h2 class="h5 fw-bold mb-4 text-dark">Información Académica</h2>
+                            <div class="col-12">
+                                <label for="education_level" class="form-label">Nivel de Estudios</label>
+                                <input id="education_level" type="text" name="education_level" value="{{ old('education_level') }}" required 
+                                       class="form-control form-control-lg @error('education_level') is-invalid @enderror">
+                                @error('education_level') <div class="invalid-feedback">{{ $message }}</div> @enderror
+                            </div>
+                        </div>
+
+                        <div class="section-divider">
+                            <h2 class="h5 fw-bold mb-4 text-dark">Seguridad</h2>
+                            <div class="row g-3">
+                                <div class="col-md-6">
+                                    <label for="password" class="form-label">Contraseña</label>
+                                    <input id="password" type="password" name="password" required 
+                                           class="form-control form-control-lg @error('password') is-invalid @enderror">
+                                    @error('password') <div class="invalid-feedback">{{ $message }}</div> @enderror
+                                </div>
+                                <div class="col-md-6">
+                                    <label for="password_confirmation" class="form-label">Confirmar Contraseña</label>
+                                    <input id="password_confirmation" type="password" name="password_confirmation" required 
+                                           class="form-control form-control-lg">
+                                </div>
+                            </div>
+                        </div>
+
+                        <div class="d-grid gap-3 mt-5">
+                            <button type="submit" class="btn btn-ues-rojo btn-lg fw-bold shadow-sm py-3">
+                                Registrarme
+                            </button>
+                            <div class="text-center">
+                                <a href="{{ route('login') }}" class="text-decoration-none small text-ues-blue fw-bold">
+                                    ¿Ya tienes una cuenta? <span class="text-decoration-underline">Inicia Sesión</span>
+                                </a>
+                            </div>
+                        </div>
+                    </form>
+
+                    <div class="mt-5 pt-4 border-top text-center text-muted">
+                        <small>Sistema de Gestión de Candidatos<br>
+                            Universidad de El Salvador © 2026</small>
                     </div>
                 </div>
             </div>
-
-            <!-- Sección: Información Académica -->
-            <div class="border-l-4 border-ues-gold pl-4 mb-6">
-                <h2 class="text-lg font-semibold text-gray-800 mb-4">Información Académica</h2>
-                
-                <!-- Education Level -->
-                <div>
-                    <label for="education_level" class="block text-sm font-semibold text-gray-700 mb-2">Nivel de Estudios</label>
-                    <input id="education_level" type="text" name="education_level" value="{{ old('education_level') }}" required
-                           class="block w-full px-4 py-3 text-gray-900 bg-gray-50 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-ues-blue focus:border-transparent transition">
-                    @error('education_level')
-                        <p class="mt-2 text-sm text-ues-red">{{ $message }}</p>
-                    @enderror
-                </div>
-            </div>
-
-            <!-- Sección: Seguridad -->
-            <div class="border-l-4 border-ues-gold pl-4 mb-6">
-                <h2 class="text-lg font-semibold text-gray-800 mb-4">Seguridad</h2>
-                
-                <div class="grid grid-cols-1 md:grid-cols-2 gap-5">
-                    <!-- Password -->
-                    <div>
-                        <label for="password" class="block text-sm font-semibold text-gray-700 mb-2">Contraseña</label>
-                        <input id="password" type="password" name="password" required autocomplete="new-password"
-                               class="block w-full px-4 py-3 text-gray-900 bg-gray-50 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-ues-blue focus:border-transparent transition">
-                        @error('password')
-                            <p class="mt-2 text-sm text-ues-red">{{ $message }}</p>
-                        @enderror
-                    </div>
-
-                    <!-- Confirm Password -->
-                    <div>
-                        <label for="password_confirmation" class="block text-sm font-semibold text-gray-700 mb-2">Confirmar Contraseña</label>
-                        <input id="password_confirmation" type="password" name="password_confirmation" required autocomplete="new-password"
-                               class="block w-full px-4 py-3 text-gray-900 bg-gray-50 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-ues-blue focus:border-transparent transition">
-                    </div>
-                </div>
-            </div>
-
-            <!-- Buttons -->
-            <div class="space-y-4 pt-4">
-                <button type="submit" 
-                        class="w-full px-4 py-3 font-semibold text-white bg-ues-red rounded-lg hover:bg-red-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-ues-red transition shadow-md">
-                    Registrarme
-                </button>
-
-                <div class="text-center">
-                    <a href="{{ route('login') }}" 
-                       class="text-sm text-ues-blue hover:text-blue-800 font-medium transition">
-                        ¿Ya tienes una cuenta? <span class="underline">Inicia Sesión</span>
-                    </a>
-                </div>
-            </div>
-        </form>
-
-        <!-- Footer -->
-        <div class="mt-8 pt-6 border-t border-gray-200 text-center">
-            <p class="text-xs text-gray-500">Sistema de Gestión de Candidatos</p>
         </div>
     </div>
 
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
 </body>
 </html>

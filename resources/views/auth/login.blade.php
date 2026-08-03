@@ -4,101 +4,88 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Login de Candidato</title>
-    <script src="https://cdn.tailwindcss.com"></script>
-    <script>
-        tailwind.config = {
-            theme: {
-                extend: {
-                    colors: {
-                        'ues-blue': '#0047AB',
-                        'ues-red': '#E60000',
-                        'ues-gold': '#FFCC00',
-                    }
-                }
-            }
-        }
-    </script>
+    
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+    
+    @vite(['resources/css/bootstrap-custom.css'])
 </head>
-<body class="bg-gray-50 flex items-center justify-center min-h-screen py-8">
+<body class="bg-light d-flex align-items-center min-vh-100">
 
-    <div class="w-full max-w-md px-8 py-10 bg-white rounded-xl shadow-lg">
-        
-        <!-- Logo/Header -->
-        <div class="text-center mb-8">
-            <div class="w-16 h-16 bg-ues-blue rounded-full mx-auto mb-4 flex items-center justify-center">
-                <svg class="w-8 h-8 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z"></path>
-                </svg>
-            </div>
-            <h1 class="text-2xl font-bold text-ues-blue">Acceso de Candidatos</h1>
-            <p class="text-gray-600 text-sm mt-2">Ingresa tus credenciales para continuar</p>
-        </div>
+    <div class="container">
+        <div class="row justify-content-center">
+            <div class="col-12 col-sm-10 col-md-8 col-lg-5 col-xl-4">
+                
+                <div class="card shadow-lg border-0 rounded-4 p-4">
+                    
+                    <div class="text-center mb-4">
+                        <img src="{{ asset('logo/ues1.png') }}" 
+                             alt="Logo UES" 
+                             class="img-fluid mb-3" 
+                             style="max-height: 140px;">
+                        
+                        <h2 class="h4 fw-bold text-ues-blue">Acceso de Candidatos</h2>
+                        <p class="text-muted small">Ingresa tus credenciales para continuar con el Test de Raven</p>
+                    </div>
 
-        <!-- Session Status -->
-        @if (session('status'))
-            <div class="mb-6 p-3 bg-green-50 border-l-4 border-green-500 rounded">
-                <p class="text-sm text-green-700">{{ session('status') }}</p>
-            </div>
-        @endif
+                    @if (session('status'))
+                        <div class="alert alert-success small p-2" role="alert">
+                            {{ session('status') }}
+                        </div>
+                    @endif
 
-        <form method="POST" action="{{ route('login') }}" class="space-y-5">
-            @csrf
+                    <form method="POST" action="{{ route('login') }}">
+                        @csrf
 
-            <!-- Login (Email o DUI/NIT) -->
-            <div>
-                <label for="login" class="block text-sm font-semibold text-gray-700 mb-2">
-                    Email o DUI/NIT
-                </label>
-                <input id="login" type="text" name="login" value="{{ old('login') }}" required autofocus autocomplete="username"
-                       class="block w-full px-4 py-3 text-gray-900 bg-gray-50 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-ues-blue focus:border-transparent transition">
-                @error('login')
-                    <p class="mt-2 text-sm text-ues-red">{{ $message }}</p>
-                @enderror
-            </div>
+                        <div class="mb-3">
+                            <label for="login" class="form-label small fw-bold">Email o DUI/NIT</label>
+                            <input id="login" type="text" name="login" value="{{ old('login') }}" 
+                                   class="form-control form-control-lg @error('login') is-invalid @enderror" 
+                                   required autofocus placeholder="Ej: 05123456-7">
+                            
+                            @error('login')
+                                <div class="invalid-feedback">{{ $message }}</div>
+                            @enderror
+                        </div>
 
-            <!-- Password -->
-            <div>
-                <label for="password" class="block text-sm font-semibold text-gray-700 mb-2">
-                    Contraseña
-                </label>
-                <input id="password" type="password" name="password" required autocomplete="current-password"
-                       class="block w-full px-4 py-3 text-gray-900 bg-gray-50 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-ues-blue focus:border-transparent transition">
-                 @error('password')
-                    <p class="mt-2 text-sm text-ues-red">{{ $message }}</p>
-                @enderror
-            </div>
+                        <div class="mb-3">
+                            <label for="password" class="form-label small fw-bold">Contraseña</label>
+                            <input id="password" type="password" name="password" 
+                                   class="form-control form-control-lg @error('password') is-invalid @enderror" 
+                                   required placeholder="••••••••">
+                            
+                            @error('password')
+                                <div class="invalid-feedback">{{ $message }}</div>
+                            @enderror
+                        </div>
 
-            <!-- Remember Me -->
-            <div class="flex items-center">
-                <input id="remember_me" type="checkbox" 
-                       class="w-4 h-4 rounded border-gray-300 text-ues-blue focus:ring-2 focus:ring-ues-blue" 
-                       name="remember">
-                <label for="remember_me" class="ml-2 text-sm text-gray-700">
-                    Recordar sesión
-                </label>
-            </div>
+                        <div class="mb-4 form-check">
+                            <input type="checkbox" class="form-check-input" id="remember" name="remember">
+                            <label class="form-check-label small text-muted" for="remember">Recordar sesión</label>
+                        </div>
 
-            <!-- Buttons -->
-            <div class="space-y-4 pt-2">
-                <button type="submit" 
-                        class="w-full px-4 py-3 font-semibold text-white bg-ues-red rounded-lg hover:bg-red-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-ues-red transition shadow-md">
-                    Iniciar Sesión
-                </button>
+                        <div class="d-grid gap-2">
+                            <button type="submit" class="btn btn-ues-rojo btn-lg fw-bold shadow-sm">
+                                Iniciar Sesión
+                            </button>
+                        </div>
 
-                <div class="text-center">
-                    <a href="{{ route('register') }}" 
-                       class="text-sm text-ues-blue hover:text-blue-800 font-medium transition">
-                        ¿No tienes una cuenta? <span class="underline">Regístrate</span>
-                    </a>
-                </div>
-            </div>
-        </form>
+                        <div class="text-center mt-4">
+                            <a href="{{ route('register') }}" class="text-decoration-none small text-ues-blue fw-bold">
+                                ¿No tienes una cuenta? <span class="text-decoration-underline">Regístrate</span>
+                            </a>
+                        </div>
+                    </form>
 
-        <!-- Footer -->
-        <div class="mt-8 pt-6 border-t border-gray-200 text-center">
-            <p class="text-xs text-gray-500">Sistema de Gestión de Candidatos</p>
+                    <div class="mt-4 pt-3 border-top text-center text-muted" style="font-size: 0.7rem;">
+                        <p class="text-xs text-gray-500">Sistema de Gestión de Candidatos <br>
+                            Universidad de El Salvador © 2026
+                        </p>
+                    </div>
+
+                </div> </div>
         </div>
     </div>
 
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
 </body>
 </html>
