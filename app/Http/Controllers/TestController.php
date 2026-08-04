@@ -132,8 +132,11 @@ class TestController extends Controller
                 ? (int) $request->remaining_time
                 : null;
 
-            // Sincronizamos el reloj con el menor tiempo conocido antes de validar/guardar.
             $session = $session->fresh();
+            $previousRemaining = (int) ($session->remaining_time ?? $session->time_limit ?? 0);
+
+            // Sincronizamos el reloj con el servidor y no con el cliente.
+            // El valor enviado por el navegador no es confiable.
             $this->timerService->syncTiming($session, $clientRemainingTime);
 
             // Chequeo PREVIO de timeout. Si ya se acabó el tiempo, no guardar.
@@ -147,9 +150,23 @@ class TestController extends Controller
                 ]);
             }
 
+            // Validar que el candidato solo responda a la pregunta activa de la sesión
+            $currentQuestion = $this->testService->getCurrentQuestion($session);
+            $requestedQuestionId = (int) $request->input('question_id');
+
+            if (!$currentQuestion || $requestedQuestionId !== (int) $currentQuestion->id) {
+                return response()->json([
+                    'success' => false,
+                    'message' => 'No puedes responder una pregunta que no es la actual.',
+                ], 422);
+            }
+
+
             // 1. Guardar la respuesta PRIMERO.
-            $timeSpent = (int) ($request->time_spent ?? 0);
             $question = TestQuestion::findOrFail($request->question_id);
+            $currentRemaining = (int) ($session->fresh()->remaining_time ?? 0);
+            $timeSpent = max(0, $previousRemaining - $currentRemaining);
+
             $this->testService->saveAnswer(
                 $session,
                 $question,

@@ -199,11 +199,6 @@ class TestTimer {
         this.stopWorker();
         this.showLoadingState();
 
-        const timeSpent = Math.max(
-            0,
-            (this.state.questionStartRemaining ?? 0) - (this.state.timeRemaining ?? 0)
-        );
-
         try {
             const response = await fetch(this.elements.saveAnswerUrlInput.value, {
                 method: 'POST',
@@ -214,7 +209,6 @@ class TestTimer {
                 body: JSON.stringify({
                     question_id: this.elements.questionIdInput.value,
                     answer:      this.state.selectedOption,
-                    time_spent:  timeSpent,
                     remaining_time: Math.max(0, this.state.timeRemaining ?? 0),
                 }),
             });
