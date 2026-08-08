@@ -78,7 +78,7 @@ class TimerService
     public function syncTiming(TestSession $session, ?int $clientRemaining = null): int
     {
         // 2700 seg = 45 min (prod) | 600 seg = 10 min (test)
-        $timeLimit = (int) ($session->time_limit ?? 600); 
+        $timeLimit = (int) ($session->time_limit ?? 2700); 
         
         // Si es null, es la primera vez, usamos el límite total
         $persistedRemaining = is_null($session->remaining_time)

@@ -3,7 +3,6 @@
 namespace App\Filament\Resources\TestSessions\Pages;
 
 use App\Filament\Resources\TestSessions\TestSessionResource;
-use Filament\Actions\CreateAction;
 use Filament\Resources\Pages\ListRecords;
 
 class ListTestSessions extends ListRecords
@@ -12,8 +11,6 @@ class ListTestSessions extends ListRecords
 
     protected function getHeaderActions(): array
     {
-        return [
-            CreateAction::make(),
-        ];
+        return [];
     }
 }

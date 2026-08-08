@@ -62,8 +62,8 @@ class TestService
             'started_at' => now(),
             'last_activity_at' => now(),
             'elapsed_time' => 0,
-            'time_limit' => 600, //  2700 segundo produccion 600 test
-            'remaining_time' => 600, //  2700 segundo produccion 600 test
+            'time_limit' => 2700, //  2700 segundo produccion 600 test
+            'remaining_time' => 2700, //  2700 segundo produccion 600 test
             'status' => 'in_progress',
             'ip_address' => request()->ip(),
             'user_agent' => request()->userAgent(),

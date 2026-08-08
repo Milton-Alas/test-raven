@@ -5,6 +5,7 @@ namespace Database\Seeders;
 use App\Models\User;
 use Illuminate\Database\Console\Seeds\WithoutModelEvents;
 use Illuminate\Database\Seeder;
+use Illuminate\Support\Facades\Hash;
 
 class DatabaseSeeder extends Seeder
 {
@@ -15,12 +16,25 @@ class DatabaseSeeder extends Seeder
      */
     public function run(): void
     {
-        // User::factory(10)->create();
+        // Usuario Administrador
+    User::firstOrCreate(
+        ['email' => 'admin@test.com'],
+        [
+            'name'     => 'Administrador',
+            'password' => Hash::make('password'), // Cambia por tu contraseña de producción
+            'role'     => 'admin',
+        ]
+    );
 
-        User::factory()->create([
-            'name' => 'Test User',
-            'email' => 'test@example.com',
-        ]);
+    // Usuario Reportador
+    User::firstOrCreate(
+        ['email' => 'reporter@test.com'],
+        [
+            'name'     => 'Reportador',
+            'password' => Hash::make('password'), // Cambia por tu contraseña de producción
+            'role'     => 'reporter',
+        ]
+    );
 
         $this->call([
             RavenTestSeeder::class,

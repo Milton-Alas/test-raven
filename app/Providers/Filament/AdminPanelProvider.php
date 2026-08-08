@@ -26,6 +26,7 @@ class AdminPanelProvider extends PanelProvider
             ->id('admin')
             ->path('admin')
             ->login()
+            ->brandName('Panel de Administración - UESº')
             ->colors([
                 'primary' => Color::Blue,
             ])
