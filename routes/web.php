@@ -30,12 +30,15 @@ Route::middleware('auth:candidate')->group(function () {
 
     // Flujo del test
     Route::post('/test/start', [TestController::class, 'start'])
+        ->middleware('throttle:test-post')
         ->name('candidate.test.start');
     Route::get('/test/question', [TestController::class, 'showQuestion'])
         ->name('candidate.test.question');
     Route::post('/test/answer', [TestController::class, 'saveAnswer'])
+        ->middleware('throttle:test-post')
         ->name('candidate.test.answer');
     Route::post('/test/timeout', [TestController::class, 'handleTimeout'])
+        ->middleware('throttle:test-post')
         ->name('candidate.test.timeout');
     Route::get('/test/timer', [TestController::class, 'getTimerData'])
         ->name('candidate.test.timer');
