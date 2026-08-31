@@ -45,7 +45,7 @@ class TestSeriesTable
 
                 TextColumn::make('questions_count')
                     ->label('Total Preguntas')
-                    ->counts('questions') // Asegúrate de tener la relación 'questions' en tu modelo
+                    ->counts('questions')
                     ->badge()
                     ->color('info')
                     ->sortable()

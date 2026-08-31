@@ -22,7 +22,7 @@ class TestSeriesForm
                         ->placeholder('Ej: A, B, C...')
                         ->required()
                         ->maxLength(1)
-                        ->extraInputAttributes(['style' => 'text-transform: uppercase']) // Fuerza visualmente mayúsculas
+                        ->extraInputAttributes(['style' => 'text-transform: uppercase'])
                         ->columnSpan(1),
 
                     TextInput::make('order')
@@ -38,7 +38,7 @@ class TestSeriesForm
                         ->placeholder('Ingrese el nombre descriptivo')
                         ->required()
                         ->maxLength(255)
-                        ->columnSpanFull(), // Ocupa toda la fila para dar relevancia al nombre
+                        ->columnSpanFull(), 
 
                     Textarea::make('description')
                         ->label('Descripción')

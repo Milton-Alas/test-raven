@@ -38,7 +38,7 @@ class TestQuestionsTable
 
                 /*ImageColumn::make('matrix_image_path')
                     ->label('Matriz')
-                    ->square() // Las matrices de Raven suelen ser cuadradas, se ven mejor así que circulares
+                    ->square()
                     ->size(50)
                     ->extraImgAttributes(['class' => 'rounded shadow-sm']),*/
                     ImageColumn::make('matrix_image_path')
@@ -54,9 +54,9 @@ class TestQuestionsTable
                     ->badge()
                     ->color(fn ($state): string => $state < 4 ? 'danger' : 'gray')
                     ->alignCenter(),*/
-                  /*  TextColumn::make('answer_options_count') // El nombre automático de Filament para counts('answerOptions')
+                  /*  TextColumn::make('answer_options_count')
                     ->label('Opciones')
-                    ->counts('answerOptions') // Nombre exacto de la relación en tu modelo TestQuestion
+                    ->counts('answerOptions')
                     ->badge()
                     ->color(fn ($state, $record): string => 
                         // Lógica inteligente: Series A,B deben tener 6. C,D,E deben tener 8.

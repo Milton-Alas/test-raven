@@ -13,7 +13,6 @@ class RecentSessionsWidget extends BaseWidget
 {
     protected static ?int $sort = 4;
 
-    // usar 'full', 'md' o 'sm' según cómo quieras que se vea en el grid
     protected int|string|array $columnSpan = 'full';
 
     protected static ?string $heading = 'Últimas Sesiones de Test';
@@ -73,7 +72,7 @@ class RecentSessionsWidget extends BaseWidget
 
                 Tables\Columns\TextColumn::make('started_at')
                     ->label('Iniciado hace')
-                    ->since() // Muestra "hace 5 minutos", muy útil para monitoreo
+                    ->since() 
                     ->dateTimeTooltip()
                     ->sortable(),
 

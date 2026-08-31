@@ -35,7 +35,7 @@ class UserForm
                     ->options(User::getRoles())
                     ->required()
                     ->default('reporter')
-                    ->native(false) // Estilo más limpio
+                    ->native(false)
                     ->columnSpan(1),
 
                 Toggle::make('is_active')
