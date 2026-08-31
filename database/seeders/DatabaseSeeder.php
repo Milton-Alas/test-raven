@@ -21,7 +21,7 @@ class DatabaseSeeder extends Seeder
         ['email' => 'admin@test.com'],
         [
             'name'     => 'Administrador',
-            'password' => Hash::make('password'), // Cambia por tu contraseña de producción
+            'password' => Hash::make('password'), 
             'role'     => 'admin',
         ]
     );
@@ -31,7 +31,7 @@ class DatabaseSeeder extends Seeder
         ['email' => 'reporter@test.com'],
         [
             'name'     => 'Reportador',
-            'password' => Hash::make('password'), // Cambia por tu contraseña de producción
+            'password' => Hash::make('password'),
             'role'     => 'reporter',
         ]
     );
