@@ -1,4 +1,4 @@
-/* Colores UES autorizados */
+/* Colores UES */
 :root {
     --ues-rojo-principal: #C90019;
     --ues-negro-principal: #1A171B;
@@ -43,5 +43,5 @@
     transform: translateY(-3px);
     box-shadow: 0 10px 20px rgba(201, 0, 25, 0.3) !important;
 }
-/* Color azul UES para el header si no está en tu CSS externo */
+/* Color azul UES para el header */
 .bg-ues-blue { background-color: #0047AB !important; }

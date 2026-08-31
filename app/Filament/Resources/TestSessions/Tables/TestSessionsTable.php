@@ -65,7 +65,7 @@ class TestSessionsTable
 
                 IconColumn::make('test_result_exists')
                     ->label('¿Hay Resultado?')
-                    ->exists('testResult') // Verifica si existe la relación en la DB
+                    ->exists('testResult')
                     ->boolean()
                     ->trueColor('success')
                     ->falseColor('gray')

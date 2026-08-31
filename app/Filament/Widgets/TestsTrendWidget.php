@@ -11,7 +11,6 @@ class TestsTrendWidget extends ChartWidget
 {
     protected static ?int $sort = 3;
 
-    // usar 'full', 'md' o 'sm' según cómo quieras que se vea en el grid
     protected int|string|array $columnSpan = 'md';
 
     protected ?string $heading = 'Evolución de Tests (Últimos 30 días)';

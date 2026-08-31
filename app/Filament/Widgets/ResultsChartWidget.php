@@ -10,7 +10,6 @@ class ResultsChartWidget extends ChartWidget
 {
     protected static ?int $sort = 2;
 
-    // usar 'full', 'md' o 'sm' según cómo quieras que se vea en el grid
     protected int|string|array $columnSpan = 'md';
 
     protected ?string $heading = 'Distribución de Resultados por Rango Diagnóstico';

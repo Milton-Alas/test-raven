@@ -10,7 +10,6 @@ class DiagnosticDistributionWidget extends ChartWidget
 {
     protected static ?int $sort = 5;
 
-    // usar 'full', 'md' o 'sm' según cómo quieras que se vea en el grid
     protected int|string|array $columnSpan = 'md'; 
 
     protected ?string $heading = 'Distribución por Diagnóstico (%)';
@@ -43,7 +42,6 @@ class DiagnosticDistributionWidget extends ChartWidget
                 ? round(($count / $totalResults) * 100, 1)
                 : 0;
 
-            // El label ahora incluye el porcentaje directamente para mayor claridad
             $labels[] = "{$range->range_roman} - {$range->range_label} ({$percentage}%)";
             $data[] = $count;
         }
@@ -53,7 +51,7 @@ class DiagnosticDistributionWidget extends ChartWidget
                 [
                     'data' => $data,
                     'backgroundColor' => array_slice($colorPalette, 0, count($data)),
-                    'hoverOffset' => 15, // Efecto visual al pasar el ratón
+                    'hoverOffset' => 15, 
                     'borderColor' => '#FFFFFF',
                     'borderWidth' => 2,
                 ],
@@ -73,7 +71,7 @@ class DiagnosticDistributionWidget extends ChartWidget
             'plugins' => [
                 'legend' => [
                     'display' => true,
-                    'position' => 'right', // Mejor visibilidad en pantallas anchas
+                    'position' => 'right',
                     'labels' => [
                         'usePointStyle' => true,
                         'pointStyle' => 'circle',
@@ -81,7 +79,7 @@ class DiagnosticDistributionWidget extends ChartWidget
                     ],
                 ],
             ],
-            'cutout' => '65%', // Hace el centro del "donas" un poco más grande y moderno
+            'cutout' => '65%', 
             'radius' => '90%',
         ];
     }

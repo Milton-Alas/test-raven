@@ -56,7 +56,7 @@ class TestQuestionForm
                         ->label('Imagen de la Matriz Principal')
                         ->image()
                         ->directory('test-images/matrices')
-                        ->imageEditor() // Permite recortar si es necesario
+                        ->imageEditor()
                         ->required()
                         ->imagePreviewHeight('200')
                         ->columnSpanFull(),

@@ -29,7 +29,7 @@ class UsersTable
                 ->searchable()
                 ->sortable()
                 ->weight('bold')
-                // Icono dinámico según el rol (como en tu ejemplo de categorías)
+                
                 ->icon(fn (User $record): string => match ($record->role) {
                     'admin' => 'heroicon-o-shield-check',
                     'reporter' => 'heroicon-o-document-chart-bar',
@@ -102,7 +102,7 @@ class UsersTable
 
             ])
             ->actions([
-            // Agrupamos acciones para un look más limpio
+            
                 ViewAction::make(),
                 EditAction::make(),
                 DeleteAction::make()
