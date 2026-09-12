@@ -91,10 +91,11 @@ class CandidateRegistrationThrottleTest extends TestCase
 
         $respuesta->assertStatus(429);
         $this->assertStringContainsString(
-            'límite de intentos de registro',
+            'límite de intentos',
             (string) session('error')
         );
-        $this->assertStringContainsString('minuto', (string) session('error'));
+        // El registro se bloquea por horas, así que el aviso lo expresa así.
+        $this->assertStringContainsString('hora', (string) session('error'));
     }
 
     public function test_cambiar_la_ip_no_permite_abusar_del_mismo_dui(): void
@@ -190,6 +191,6 @@ class CandidateRegistrationThrottleTest extends TestCase
         $this->withServerVariables(['REMOTE_ADDR' => $ip])
             ->get('/register')
             ->assertOk()
-            ->assertSee('límite de intentos de registro');
+            ->assertSee('límite de intentos');
     }
 }

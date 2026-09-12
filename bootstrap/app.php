@@ -23,7 +23,8 @@ return Application::configure(basePath: dirname(__DIR__))
     })
     ->withExceptions(function (Exceptions $exceptions): void {
         /*
-         * Límite de intentos alcanzado (throttle del registro público).
+         * Límite de intentos alcanzado (throttle del registro público y del
+         * login de candidatos).
          *
          * En lugar de la página de error 429 sin contexto, se devuelve al
          * formulario con un mensaje claro y el tiempo de espera. Se conserva el
@@ -36,11 +37,19 @@ return Application::configure(basePath: dirname(__DIR__))
             }
 
             $retryAfter = (int) ($e->getHeaders()['Retry-After'] ?? 0);
-            $minutos = max(1, (int) ceil($retryAfter / 60));
 
-            $mensaje = $retryAfter > 0
-                ? "Se alcanzó el límite de intentos de registro. Vuelve a intentarlo en {$minutos} minuto(s)."
-                : 'Se alcanzó el límite de intentos de registro. Vuelve a intentarlo más tarde.';
+            // La espera se expresa en segundos, minutos u horas según la ventana
+            // del limitador: el login bloquea por minutos y el registro por horas.
+            $espera = match (true) {
+                $retryAfter <= 0 => null,
+                $retryAfter < 60 => "{$retryAfter} segundo(s)",
+                $retryAfter < 3600 => max(1, (int) ceil($retryAfter / 60)).' minuto(s)',
+                default => max(1, (int) ceil($retryAfter / 3600)).' hora(s)',
+            };
+
+            $mensaje = $espera
+                ? "Se alcanzó el límite de intentos. Vuelve a intentarlo en {$espera}."
+                : 'Se alcanzó el límite de intentos. Vuelve a intentarlo más tarde.';
 
             return redirect()
                 ->back()
