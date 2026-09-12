@@ -241,6 +241,57 @@ exportación se distingue dentro de `properties.export_format`, no en el nombre 
 
 ---
 
+## 2.7 Límite de intentos en el registro público (implementado)
+
+**Problema:** `POST /register` es la única ruta que crea cuentas sin autenticación y **no tenía
+ningún límite** (hallazgo 7 de la sección 4). Un bot podía crear candidatos en masa o usar el
+formulario como endpoint de sondeo.
+
+**Solución elegida: throttling, sin captcha.** Se descartó el captcha porque añade una dependencia
+externa (o un servicio con claves), depende de JavaScript, agrega fricción a un candidato que se
+registra una sola vez y no aporta nada frente al abuso automatizado simple que aquí se quiere frenar.
+El límite por servidor es más simple, no rompe la accesibilidad y es verificable.
+
+| Pieza | Archivo |
+| --- | --- |
+| Definición de los límites | `app/Providers/AppServiceProvider.php` → `RateLimiter::for('register')` |
+| Aplicación en la ruta | `routes/web.php` → `->middleware('throttle:register')` |
+| Respuesta del 429 | `bootstrap/app.php` → `$exceptions->render(ThrottleRequestsException::class)` |
+| Aviso en pantalla | `resources/views/auth/register.blade.php` (bloque de mensajes flash) |
+| Pruebas | `tests/Feature/CandidateRegistrationThrottleTest.php` (8 pruebas, 38 aserciones) |
+
+**Los dos límites**
+
+- **5 registros por hora y por IP** — frena la creación masiva de cuentas desde un mismo origen. Un
+  candidato real se registra una sola vez, así que no le afecta.
+- **3 intentos por hora sobre el mismo DUI/NIT** — evita que se roten direcciones IP (o que se salga
+  por una red compartida) para insistir sobre una misma identidad.
+
+**Comportamiento ante el bloqueo**
+
+Laravel devuelve 429. En vez de la página de error sin contexto, se vuelve al formulario con
+«Se alcanzó el límite de intentos de registro. Vuelve a intentarlo en N minuto(s).», conservando el
+código 429 y la cabecera `Retry-After`. Si la petición espera JSON se mantiene la respuesta estándar.
+
+**Decisión sobre la cuota:** el límite se aplica **antes** de validar el formulario, así que un bot
+que envía datos inválidos también consume su cuota. Es deliberado: impide usar el endpoint como
+sondeo indefinido. Hay una prueba que lo fija.
+
+**Bug encontrado al implementarlo:** la vista de registro **no mostraba los mensajes flash**, solo
+errores de validación por campo. Sin ese arreglo, el candidato bloqueado volvía al formulario sin
+ninguna explicación (el rate limiting funcionaba, pero era invisible y confuso). Se añadieron los
+bloques de `session('error')` y `session('success')`.
+
+**Pendiente relacionado:** `POST /login` sigue **sin límite de intentos** (hallazgo 7 de la sección 4),
+así que la fuerza bruta sobre credenciales de candidatos sigue abierta. Mismo mecanismo, aplicado a
+`login`; no se hizo aquí porque el pedido era el registro.
+
+> **Nota de despliegue:** el contador vive en la caché. Con `CACHE_STORE=database` (el valor actual)
+> el límite es compartido entre procesos, que es lo correcto. Si en algún momento se cambia a `array`,
+> el límite deja de ser efectivo entre peticiones.
+
+---
+
 ## 3. Hallazgos verificados del panel de administración
 
 | # | Hallazgo | Evidencia |
@@ -314,7 +365,8 @@ existen en este entorno de trabajo.
 
 1. Restringir `canForceDeleteAny`/`canRestoreAny` por rol (hallazgo 1 del panel).
 2. Unificar la convención de rutas de imagen y versionar las láminas del test (hallazgos 3 y 4 del candidato).
-3. Rate limiting en `login`/`register` (hallazgo 7 del candidato).
+3. Rate limiting en `login` — el registro público ya está protegido (sección 2.7). Sigue abierta la
+   fuerza bruta sobre credenciales de candidatos.
 
 **Integridad de datos**
 
@@ -348,6 +400,9 @@ existen en este entorno de trabajo.
   `composer.json` (sección 2.5).
 - Auditoría de exportaciones con el evento `exported`, para PDF individual y CSV de candidatos, más
   el 500 de la acción PDF cuando el candidato está eliminado lógicamente (sección 2.6).
+- Límite de intentos en el registro público (5 por hora y por IP, 3 por DUI/NIT) con aviso claro al
+  candidato y sin captcha (sección 2.7). Incluye el arreglo de la vista de registro, que no mostraba
+  los mensajes flash.
 
 **Nota sobre las pruebas del panel:** el test de auditoría de exportaciones crea los resultados y
 sesiones que necesita, pero la base de datos **local** no tiene resultados reales (`test_results` = 0),
