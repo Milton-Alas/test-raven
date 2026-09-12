@@ -241,7 +241,7 @@ exportación se distingue dentro de `properties.export_format`, no en el nombre 
 
 ---
 
-## 2.7 Límite de intentos en el registro público (implementado)
+## 2.7 Límite de intentos en registro y login (implementado)
 
 **Problema:** `POST /register` es la única ruta que crea cuentas sin autenticación y **no tenía
 ningún límite** (hallazgo 7 de la sección 4). Un bot podía crear candidatos en masa o usar el
@@ -282,13 +282,47 @@ errores de validación por campo. Sin ese arreglo, el candidato bloqueado volví
 ninguna explicación (el rate limiting funcionaba, pero era invisible y confuso). Se añadieron los
 bloques de `session('error')` y `session('success')`.
 
-**Pendiente relacionado:** `POST /login` sigue **sin límite de intentos** (hallazgo 7 de la sección 4),
-así que la fuerza bruta sobre credenciales de candidatos sigue abierta. Mismo mecanismo, aplicado a
-`login`; no se hizo aquí porque el pedido era el registro.
+**Bug del mismo tipo en la vista de login:** tampoco renderizaba mensajes flash (solo
+`session('status')`), así que un candidato bloqueado volvía al formulario sin explicación. Corregido
+igual que en el registro.
 
 > **Nota de despliegue:** el contador vive en la caché. Con `CACHE_STORE=database` (el valor actual)
 > el límite es compartido entre procesos, que es lo correcto. Si en algún momento se cambia a `array`,
 > el límite deja de ser efectivo entre peticiones.
+
+---
+
+## 2.8 Límite de intentos en el login de candidatos (implementado)
+
+**Problema:** `POST /login` no tenía ningún límite (hallazgo 7 de la sección 4), así que se podían
+probar contraseñas sin fin contra la cuenta de un candidato: fuerza bruta pura.
+
+| Pieza | Archivo |
+| --- | --- |
+| Definición de los límites | `app/Providers/AppServiceProvider.php` → `RateLimiter::for('login')` |
+| Aplicación en la ruta | `routes/web.php` → `->middleware('throttle:login')` |
+| Respuesta del 429 | `bootstrap/app.php` (handler compartido con el registro) |
+| Aviso en pantalla | `resources/views/auth/login.blade.php` |
+| Pruebas | `tests/Feature/CandidateLoginThrottleTest.php` (8 pruebas, 50 aserciones) |
+
+**Los dos límites**
+
+- **5 intentos fallidos por minuto y por IP** — frena la prueba masiva de credenciales desde un mismo
+  origen. El umbral es holgado a propósito: varias personas pueden compartir IP (oficina, universidad,
+  red móvil) y un usuario legítimo rara vez falla cinco veces en un minuto.
+- **5 intentos fallidos por cada 15 minutos sobre el mismo identificador** (email o DUI/NIT) — cubre la
+  fuerza bruta **distribuida**, que rota direcciones IP para insistir sobre una sola cuenta. La ventana
+  es más larga porque este es el vector peligroso: adivinar la clave de un candidato concreto.
+
+**Solo cuentan los intentos fallidos.** El middleware de Laravel usa `afterCallback` para el
+incremento, y se verificó en `vendor/.../ThrottleRequests.php:170-173` que una respuesta correcta no
+consume cuota. Un candidato que entra bien nunca se ve afectado; hay una prueba que lo fija.
+
+**Mientras dura el bloqueo, incluso la contraseña correcta es rechazada.** Es deliberado: si el
+bloqueo se levantase al acertar, el formulario seguiría sirviendo como oráculo para adivinar la clave.
+
+**El mensaje de espera se adapta a la ventana:** el handler compartido ahora expresa la espera en
+segundos, minutos u horas, porque el login bloquea por minutos y el registro por horas.
 
 ---
 
@@ -334,11 +368,16 @@ grupo `web` con token), no hay `time_spent` manipulable desde el cliente (el ser
 
 ### Pruebas y calidad
 
-- `tests/` contiene únicamente los dos ejemplos del esqueleto. `Tests\Feature\ExampleTest` **falla
-  desde antes de esta rama**: espera 200 en `/` y recibe 302 (la raíz redirige a `/login`).
-- No existe cobertura alguna del flujo del test, del cálculo de resultados, del percentil ni del
-  control de tiempo. `database/factories/` solo tiene `UserFactory`, no hay factorías para
-  `Candidate`, `TestSession`, `TestQuestion` ni `TestAnswer`.
+**Estado al cerrar esta rama:** 34 pruebas en verde y 1 en rojo.
+
+- `Tests\Feature\ExampleTest` **falla desde antes de esta rama**: espera 200 en `/` y recibe 302
+  (la raíz redirige a `/login`). Es un ejemplo del esqueleto, no cubre nada real.
+- Cobertura añadida en esta rama: reseteo de contraseña de candidatos (9), auditoría de exportaciones
+  (6), límite de intentos del registro (8), límite de intentos del login (8) y smoke del panel (2).
+- **Sigue sin cobertura** el flujo del test (responder, timeout, reanudación), el cálculo de resultados,
+  el percentil y el control de tiempo. `database/factories/` solo tiene `UserFactory`: no hay factorías
+  para `Candidate`, `TestSession`, `TestQuestion`, `TestAnswer` ni `TestResult`, y cada prueba nueva las
+  crea a mano (motivo por el que la cobertura del flujo del test es más costosa de lo que debería).
 - Localización: cero llamadas a `__()`/`trans()` en `app/Filament` y en las vistas del candidato;
   todo el texto está fijo en español. El texto de bienvenida dice "una de las 6 opciones" aunque las
   series C, D y E tienen 8 (`welcome.blade.php:71`).
@@ -365,8 +404,6 @@ existen en este entorno de trabajo.
 
 1. Restringir `canForceDeleteAny`/`canRestoreAny` por rol (hallazgo 1 del panel).
 2. Unificar la convención de rutas de imagen y versionar las láminas del test (hallazgos 3 y 4 del candidato).
-3. Rate limiting en `login` — el registro público ya está protegido (sección 2.7). Sigue abierta la
-   fuerza bruta sobre credenciales de candidatos.
 
 **Integridad de datos**
 
@@ -403,6 +440,9 @@ existen en este entorno de trabajo.
 - Límite de intentos en el registro público (5 por hora y por IP, 3 por DUI/NIT) con aviso claro al
   candidato y sin captcha (sección 2.7). Incluye el arreglo de la vista de registro, que no mostraba
   los mensajes flash.
+- Límite de intentos en el login de candidatos (5 fallidos por minuto y por IP, 5 por 15 minutos por
+  identificador), con la misma lógica sin captcha (sección 2.8). Incluye el mismo arreglo de vista:
+  el login tampoco mostraba mensajes flash.
 
 **Nota sobre las pruebas del panel:** el test de auditoría de exportaciones crea los resultados y
 sesiones que necesita, pero la base de datos **local** no tiene resultados reales (`test_results` = 0),
