@@ -23,7 +23,7 @@
 </head>
 
 <body class="bg-light"> 
-    <main class="d-flex align-items-center justify-content-center min-vh-100 py-5">
+    <main class="d-flex align-items-center justify-content-center min-vh-100 py-1">
         <div class="container"> 
             @yield('content')
         </div>

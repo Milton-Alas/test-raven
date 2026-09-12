@@ -10,10 +10,10 @@
 @endphp
 
 @section('content')
-<div class="container py-4">
+<div class="container-fluid px-3 py-4 min-vh-100 d-flex flex-column justify-content-between">
     <!-- Header con Timer y Progreso -->
     <div class="card shadow-sm border-0 rounded-4 mb-4 border-top border-4 border-ues-blue">
-        <div class="card-body p-4">
+        <div class="card-body py-2 px-3">
             <div class="d-flex flex-column flex-lg-row justify-content-between align-items-center gap-4">
                 
                 <!-- Progreso -->
@@ -64,7 +64,7 @@
     <div class="card shadow-lg border-0 rounded-4 overflow-hidden mb-4">
         
         <!-- Matriz Principal -->
-        <div class="bg-light p-4 p-md-5 border-bottom">
+        <div class="bg-light py-4 px-2 border-bottom">
             <h2 class="h6 text-center text-ues-blue fw-bold mb-4">
                 <i class="bi bi-puzzle-fill me-2"></i> Selecciona la opción que completa correctamente la matriz
             </h2>
@@ -78,7 +78,7 @@
         </div>
 
         <!-- Opciones de Respuesta -->
-        <div class="card-body p-4 p-md-5">
+        <div class="card-body py-4 px-3">
             <h3 class="h6 text-center text-ues-blue fw-bold mb-4">
                 <i class="bi bi-ui-radios-grid me-2"></i> Opciones de Respuesta
             </h3>
@@ -107,7 +107,7 @@
             </div>
 
             <!-- Botón Siguiente -->
-            <div class="mt-5 d-flex flex-column align-items-center">
+            <div class="mt-4 d-flex flex-column align-items-center">
                 <button id="next-btn"
                         disabled
                         class="btn btn-ues-rojo btn-lg px-5 py-3 fw-bold shadow-sm rounded-3 d-flex align-items-center transform-hover disabled-opacity">
