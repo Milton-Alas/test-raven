@@ -18,7 +18,8 @@ use Illuminate\Support\Str;
  * entrar.
  *
  * Toda operación queda registrada en `activity_logs` con el administrador como
- * `causer` y el candidato como `subject`.
+ * `causer` y el candidato como `subject`. La IP y el user agent del
+ * administrador se registran automáticamente en `ActivityLogService::log()`.
  */
 class CandidatePasswordResetService
 {
@@ -59,10 +60,8 @@ class CandidatePasswordResetService
 
         $log = $this->log($admin, $candidate, $wasGenerated);
 
-        if ($log) {
-            // Permite que la interfaz enlace el reseteo con su registro de auditoría.
-            $candidate->setAttribute('last_password_reset_log_id', $log->id);
-        }
+        // Permite que la interfaz enlace el reseteo con su registro de auditoría.
+        $candidate->setAttribute('last_password_reset_log_id', $log->id);
 
         return $plainPassword;
     }
@@ -101,10 +100,12 @@ class CandidatePasswordResetService
      *
      * Importante: la contraseña en claro NUNCA se persiste, ni siquiera en el
      * log. Solo se guardan metadatos de la operación y la fecha del cambio.
+     * La IP y el user agent del administrador quedan registrados por
+     * `ActivityLogService::log()` en las columnas dedicadas de la tabla.
      */
-    private function log(User $admin, Candidate $candidate, bool $wasGenerated): ?ActivityLog
+    private function log(User $admin, Candidate $candidate, bool $wasGenerated): ActivityLog
     {
-        $this->activityLog->log(
+        return $this->activityLog->log(
             causer: $admin,
             subject: $candidate,
             event: self::EVENT,
@@ -112,6 +113,9 @@ class CandidatePasswordResetService
                 ? "Contraseña restablecida por el administrador {$admin->name} para el candidato {$candidate->name} (contraseña temporal generada)."
                 : "Contraseña restablecida por el administrador {$admin->name} para el candidato {$candidate->name} (contraseña definida manualmente).",
             properties: [
+                'admin_id' => $admin->id,
+                'admin_name' => $admin->name,
+                'admin_email' => $admin->email,
                 'candidate_id' => $candidate->id,
                 'candidate_name' => $candidate->name,
                 'candidate_email' => $candidate->email,
@@ -121,20 +125,11 @@ class CandidatePasswordResetService
                 'candidate_test_completed' => (bool) $candidate->test_completed,
                 'had_started_test' => (bool) $candidate->test_started_at,
                 'changed_at' => now()->toIso8601String(),
-                'ip_address' => request()?->ip(),
-                'user_agent' => request()?->userAgent(),
             ],
             changes: [
                 // Deliberadamente sin el hash ni la contraseña: solo el hecho del cambio.
                 'password' => ['changed' => true],
             ],
         );
-
-        return ActivityLog::query()
-            ->where('event', self::EVENT)
-            ->where('subject_type', Candidate::class)
-            ->where('subject_id', $candidate->id)
-            ->latest('id')
-            ->first();
     }
 }

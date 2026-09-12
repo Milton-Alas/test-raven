@@ -157,6 +157,90 @@ acceso directo a la base de datos.
 
 ---
 
+## 2.5 Extensión `intl` obligatoria (causa del error 500 en el panel)
+
+**Síntoma:** cualquier página del panel falla con
+
+```
+RuntimeException
+vendor/laravel/framework/src/Illuminate/Support/Number.php:476
+The "intl" PHP extension is required to use the [format] method.
+```
+
+**Causa:** Filament 4 usa `Illuminate\Support\Number::format()` (por ejemplo en
+`vendor/filament/support/src/helpers.php`), que requiere `ext-intl`. El PHP 8.4 del sistema tiene
+`php8.4-common` pero **no `php8.4-intl`**: en `/usr/lib/php/20240924/` no existe `intl.so` (solo está
+el de la API de PHP 8.3). Lo mismo ocurriría en producción si no se instala la extensión.
+
+**Solución definitiva (servidor):**
+
+```bash
+sudo apt-get install -y php8.4-intl      # o: sudo apt-get install -y php8.3-intl
+sudo systemctl restart php8.4-fpm        # si se usa FPM; con artisan serve basta reiniciarlo
+```
+
+**Solución mientras tanto (sin root):** el lanzador `bin/php` ejecuta la aplicación con un PHP 8.4
+que ya incluye `intl` (binario estático en `.tools/php84/`, ignorado por git):
+
+```bash
+./bin/php artisan serve          # en lugar de: php artisan serve
+./bin/php artisan route:list
+./bin/php test                   # atajo de ./bin/php artisan test
+```
+
+`composer.json` declara ahora `"ext-intl": "*"`, de modo que `composer install` avisa si falta la
+extensión en lugar de fallar en tiempo de ejecución.
+
+**Pruebas:** `tests/Feature/AdminPanelSmokeTest.php` falla con un mensaje explícito si el PHP que
+ejecuta los tests no tiene `intl`, y comprueba que `/admin/candidates` y `/admin/test-results`
+respondan 200 sin ese error.
+
+> **Ojo:** `.tools/php84/php` no está versionado (está en `.gitignore`). Si se pierde, `bin/php`
+> explica cómo volver a descargarlo.
+
+---
+
+## 2.6 Auditoría de exportaciones (evento `exported`)
+
+**Requisito:** poder auditar quién descargó qué. El rol `reporter` **sí puede** exportar el informe
+PDF individual con el diagnóstico completo (alcance confirmado), y cada exportación debe quedar
+registrada en `activity_logs`.
+
+**Implementación:**
+
+| Pieza | Archivo |
+| --- | --- |
+| Helper de auditoría | `ActivityLogService::logExport()` y `ActivityLogService::EVENT_EXPORTED` |
+| Exportación PDF individual | `app/Filament/Resources/TestResults/Tables/TestResultsTable.php` (acción `pdf`) |
+| Exportación CSV de candidatos | `app/Filament/Resources/Candidates/Tables/CandidatesTable.php` (acción masiva `export`) |
+| Pruebas | `tests/Feature/TestResultPdfExportTest.php` (6 pruebas, 41 aserciones) |
+
+**Qué se registra:** `event = "exported"`, el usuario como `causer` (admin o reporter), el registro
+exportado como `subject`, y en `properties`: `export_format` (`pdf`/`csv`), `filename`,
+`exported_at`, `exported_by_id`, `exported_by_name`, `exported_by_role`, `ip_address`, `user_agent` y
+los datos del informe (candidato, puntaje total, percentil, rango diagnóstico, `report_scope`). La
+exportación CSV añade `candidate_count`, `candidate_ids` e `includes_pii`.
+
+**Decisiones y detalles relevantes**
+
+- **Solo se audita una exportación real:** el PDF se renderiza *antes* de registrar y de responder; si
+  la generación falla, no se escribe un registro falso, se avisa por notificación y el error queda en
+  el log del servidor.
+- **El registro se escribe antes de entregar el archivo.** Si el navegador aborta la descarga a mitad
+  de camino, el log queda igualmente: se prefirió un registro de más antes que uno de menos en una
+  traza de auditoría.
+- **Se corrigió un 500 real de la acción PDF:** cuando el candidato está eliminado lógicamente,
+  `$record->candidate` es `null` y el nombre del archivo reventaba. Ahora se muestra una notificación
+  clara en lugar de un error de servidor.
+- **La exportación CSV también se audita**, aunque no se pidió explícitamente: es la otra exportación
+  del panel y contiene datos personales, así que auditar solo una quedaba incoherente.
+
+**Nota de alcance:** el evento `exported` es el que exige Laravel y el que ya estaba previsto en la
+documentación del modelo (`ActivityLog` menciona `'exported'` entre los eventos). El *formato* de la
+exportación se distingue dentro de `properties.export_format`, no en el nombre del evento.
+
+---
+
 ## 3. Hallazgos verificados del panel de administración
 
 | # | Hallazgo | Evidencia |
@@ -260,3 +344,12 @@ existen en este entorno de trabajo.
   `activity_logs` (sección 2.4). Cubre el bloqueo de un candidato que olvida su clave antes de
   rendir el test.
 - Error 500 del pipeline de assets y `public/hot` obsoleto (hallazgos 1 y 2 del candidato).
+- Error 500 del panel por falta de `ext-intl`, con lanzador `bin/php` y declaración en
+  `composer.json` (sección 2.5).
+- Auditoría de exportaciones con el evento `exported`, para PDF individual y CSV de candidatos, más
+  el 500 de la acción PDF cuando el candidato está eliminado lógicamente (sección 2.6).
+
+**Nota sobre las pruebas del panel:** el test de auditoría de exportaciones crea los resultados y
+sesiones que necesita, pero la base de datos **local** no tiene resultados reales (`test_results` = 0),
+así que la verificación end-to-end del PDF se hizo con datos tipados en SQLite y no contra datos
+vivos.

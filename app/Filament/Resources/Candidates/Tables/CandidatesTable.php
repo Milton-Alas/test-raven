@@ -3,6 +3,7 @@
 namespace App\Filament\Resources\Candidates\Tables;
 
 use App\Filament\Resources\Candidates\Actions\ResetCandidatePasswordAction;
+use App\Services\ActivityLogService;
 use Filament\Actions\BulkAction;
 use Filament\Actions\BulkActionGroup;
 use Filament\Actions\DeleteBulkAction;
@@ -113,18 +114,47 @@ class CandidatesTable
                         ->icon('heroicon-o-arrow-down-tray')
                         ->color('success')
                         ->action(function (EloquentCollection $records): StreamedResponse {
-                            return static::exportToCsv($records);
+                            $filename = static::exportFilename();
+                            $response = static::exportToCsv($records, $filename);
+
+                            // Auditoría: quién exportó qué candidatos.
+                            $user = Auth::user();
+
+                            if ($user) {
+                                app(ActivityLogService::class)->logExport(
+                                    causer: $user,
+                                    subject: null,
+                                    format: 'csv',
+                                    filename: $filename,
+                                    description: "Exportación CSV de {$records->count()} candidato(s) realizada por {$user->name}.",
+                                    properties: [
+                                        'candidate_count' => $records->count(),
+                                        'candidate_ids' => $records->pluck('id')->all(),
+                                        'includes_pii' => true,
+                                    ],
+                                );
+                            }
+
+                            return $response;
                         })
                         ->deselectRecordsAfterCompletion(),
                 ]),
             ]);
     }
 
-    public static function exportToCsv(EloquentCollection $records): StreamedResponse
+    /**
+     * Nombre del archivo de exportación de candidatos.
+     */
+    public static function exportFilename(): string
+    {
+        return 'candidatos_'.now()->format('Ymd_His').'.csv';
+    }
+
+    public static function exportToCsv(EloquentCollection $records, ?string $filename = null): StreamedResponse
     {
         $records->loadMissing('latestTestResult');
 
-        $filename = 'candidatos_'.now()->format('Ymd_His').'.csv';
+        $filename ??= static::exportFilename();
         $headers = [
             'ID',
             'Nombre',
