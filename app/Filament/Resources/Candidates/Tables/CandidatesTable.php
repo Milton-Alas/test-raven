@@ -2,10 +2,10 @@
 
 namespace App\Filament\Resources\Candidates\Tables;
 
+use App\Filament\Resources\Candidates\Actions\ResetCandidatePasswordAction;
 use Filament\Actions\BulkAction;
 use Filament\Actions\BulkActionGroup;
 use Filament\Actions\DeleteBulkAction;
-use Filament\Actions\DeleteAction;
 use Filament\Actions\EditAction;
 use Filament\Actions\ForceDeleteBulkAction;
 use Filament\Actions\RestoreBulkAction;
@@ -19,7 +19,6 @@ use Illuminate\Database\Eloquent\Collection as EloquentCollection;
 use Illuminate\Support\Facades\Auth;
 use Symfony\Component\HttpFoundation\StreamedResponse;
 
-
 class CandidatesTable
 {
     public static function configure(Table $table): Table
@@ -27,10 +26,10 @@ class CandidatesTable
         return $table
             ->columns([
                 TextColumn::make('name')
-                ->label('Nombre')
-                ->searchable()
-                ->sortable()
-                ->weight('bold'),
+                    ->label('Nombre')
+                    ->searchable()
+                    ->sortable()
+                    ->weight('bold'),
 
                 TextColumn::make('dui_nit')
                     ->label('DUI/NIT')
@@ -90,18 +89,19 @@ class CandidatesTable
             ->filters([
                 TrashedFilter::make(),
                 TernaryFilter::make('test_completed')
-                ->label('¿Test Finalizado?')
-                ->placeholder('Todos')
-                ->native(false),
+                    ->label('¿Test Finalizado?')
+                    ->placeholder('Todos')
+                    ->native(false),
                 TernaryFilter::make('is_active')
                     ->label('Estado de Cuenta')
                     ->placeholder('Todos')
                     ->native(false),
-                ])
+            ])
             ->recordActions([
                 ViewAction::make(),
                 EditAction::make()
                     ->visible(fn () => Auth::user()->isAdmin()),
+                ResetCandidatePasswordAction::make(),
             ])
             ->toolbarActions([
                 BulkActionGroup::make([
@@ -124,7 +124,7 @@ class CandidatesTable
     {
         $records->loadMissing('latestTestResult');
 
-        $filename = 'candidatos_' . now()->format('Ymd_His') . '.csv';
+        $filename = 'candidatos_'.now()->format('Ymd_His').'.csv';
         $headers = [
             'ID',
             'Nombre',

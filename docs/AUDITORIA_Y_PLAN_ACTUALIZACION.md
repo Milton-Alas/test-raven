@@ -103,6 +103,60 @@ su content-type correcto, y `GET /` sigue redirigiendo a `/login`.
 
 ---
 
+## 2.4 Reseteo manual de contraseña de candidatos (implementado)
+
+**Problema:** los candidatos no tienen recuperación de contraseña por correo (solo existe el broker
+`users` en `config/auth.php`) y la regla de una sola oportunidad (`TestService::startTest`) implica
+que un candidato que olvide su clave **antes** de rendir el test queda bloqueado sin ninguna vía de
+autoservicio.
+
+**Solución:** procedimiento de reseteo manual ejecutado por un administrador desde el panel, con
+registro en `activity_logs`.
+
+| Pieza | Archivo |
+| --- | --- |
+| Regla de negocio | `app/Services/CandidatePasswordResetService.php` |
+| Acción del panel (modal + notificación) | `app/Filament/Resources/Candidates/Actions/ResetCandidatePasswordAction.php` |
+| Puntos de acceso | `CandidatesTable` (acción de fila), `ViewCandidate` y `EditCandidate` (acciones de cabecera) |
+| Broker declarado | `config/auth.php` → `passwords.candidates` |
+| Pruebas | `tests/Feature/CandidatePasswordResetTest.php` (9 pruebas, 47 aserciones) |
+
+**Cómo funciona**
+
+1. El administrador abre **Candidatos**, usa la acción **Restablecer contraseña** (icono de llave) y
+   confirma el modal.
+2. El servicio genera una contraseña temporal de 12 caracteres, sin caracteres ambiguos
+   (`0O1lI5S8B2Z`) para que sea fácil de transcribir al comunicarla.
+3. La contraseña anterior deja de funcionar de inmediato (`Candidate` castea `password` como
+   `hashed`, por lo que el nuevo valor se almacena hasheado).
+4. Se muestra **una única vez** en una notificación persistente, con un botón *Copiar contraseña*.
+   No se envía por correo y no puede consultarse después: la contraseña en claro nunca se persiste.
+5. Se registra el evento `candidate_password_reset` en `activity_logs` con el administrador como
+   `causer`, el candidato como `subject`, la IP, el user agent, el origen de la contraseña
+   (`generated`/`manual`) y si el candidato ya había iniciado o completado el test.
+
+**Decisiones relevantes**
+
+- **Autorización:** la acción solo es visible para `admin`. Los `reporter` pueden ver la lista de
+  candidatos pero no restablecer contraseñas.
+- **No habilita un segundo intento:** el reseteo sirve para entrar al sistema; `test_completed` no se
+  modifica. El modal avisa explícitamente cuando el candidato ya completó el test o tiene uno en
+  curso.
+- **Contraseña en claro fuera de los logs:** el registro guarda `password => ['changed' => true]`, sin
+  hash ni contraseña. Hay una prueba dedicada que lo verifica.
+
+**Verificación ejecutada:** 9 pruebas en verde (incluye la llamada real a la acción sobre el
+componente Livewire `ListCandidates` y una aserción sobre el HTML servido por `/admin/candidates`),
+más una corrida de humo contra la base de datos MySQL real que confirmó que la contraseña anterior
+deja de servir, la nueva funciona y el registro de auditoría se crea con el causer/subject correctos.
+
+**Pendiente relacionado:** si un **administrador** olvida su contraseña no hay ninguna vía hoy: el
+panel no expone `->profile()` ni recuperación por correo, y no existe un comando de consola
+(`php artisan` no registra ningún comando de reseteo). Se resuelve con un comando artesanal o con
+acceso directo a la base de datos.
+
+---
+
 ## 3. Hallazgos verificados del panel de administración
 
 | # | Hallazgo | Evidencia |
@@ -193,7 +247,16 @@ existen en este entorno de trabajo.
 
 **Mantenimiento**
 
-10. Eager loading en las tablas del panel y perfil/recuperación de contraseña (hallazgos 7 y 9 del panel).
+10. Eager loading en las tablas del panel, y perfil/recuperación de contraseña **de los
+    administradores** (hallazgos 7 y 9 del panel). El reseteo de candidatos ya está implementado
+    (sección 2.4).
 11. Retirar el middleware muerto (`CandidateAuth`, alias sin uso, `CheckPanelAccess`) y corregir el
     destino de `RedirectIfAuthenticated` (hallazgo 10 del candidato).
 12. Cobertura de pruebas del flujo, el cálculo y el timer, y corrección de `ExampleTest`.
+
+**Resuelto en esta rama**
+
+- Reseteo manual de la contraseña de candidatos por parte del administrador, con registro en
+  `activity_logs` (sección 2.4). Cubre el bloqueo de un candidato que olvida su clave antes de
+  rendir el test.
+- Error 500 del pipeline de assets y `public/hot` obsoleto (hallazgos 1 y 2 del candidato).
