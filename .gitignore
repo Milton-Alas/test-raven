@@ -27,6 +27,13 @@
 /public/build/
 /public/hot
 
+# Herramientas locales de desarrollo (binario PHP estático)
+/.tools/
+
+# Caché local de npm (este entorno tiene HOME de solo lectura)
+/.npm-cache/
+/.npm/
+
 # Otros
 .phpunit.result.cache
 Homestead.json
