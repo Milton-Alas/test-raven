@@ -12,6 +12,28 @@ class ActivityLogService
      */
     public const EVENT_EXPORTED = 'exported';
 
+    /**
+     * Orden fijo de claves para el JSON de `properties` en exportaciones.
+     * Cualquier clave que llegue en $properties y no esté en esta lista se
+     * agrega al final, en el orden en que se recibió.
+     */
+    private const EXPORT_PROPERTY_ORDER = [
+        'filename',
+        'exported_by_name',
+        'exported_by_email',
+        'exported_by_role',
+        'candidate_dui_nit',
+        'exported_at',
+        'candidate_id',
+        'candidate_name',
+        'exported_by_id',
+        'test_result_id',
+        'candidate_email',
+        'test_session_id',
+        'diagnostic_label',
+        'diagnostic_range',
+    ];
+
     public function log(
         ?Model $causer,
         ?Model $subject,
@@ -38,11 +60,12 @@ class ActivityLogService
      * Registra una exportación para poder auditar quién descargó qué.
      *
      * @param  Model  $causer  Usuario que descarga (admin o reporter).
-     * @param  Model|null  $subject  Entidad exportada. En una exportación por
-     *                               lotes, la referencia al conjunto.
-     * @param  string  $format  Formato del archivo: 'pdf', 'csv', ...
+     * @param  Model|null  $subject  Entidad exportada (ej. el TestResult).
+     * @param  string  $format  Formato del archivo: 'pdf', 'csv', ... (no se
+     *                          persiste en properties; el filename ya lo refleja).
      * @param  string  $filename  Nombre del archivo entregado.
-     * @param  array  $properties  Metadatos adicionales (contadores, filtros, ids).
+     * @param  array  $properties  Metadatos adicionales del contexto exportado
+     *                             (candidate_id, test_result_id, etc.).
      */
     public function logExport(
         Model $causer,
@@ -52,21 +75,32 @@ class ActivityLogService
         string $description,
         array $properties = []
     ): ActivityLog {
+        $values = array_merge($properties, [
+            'filename' => $filename,
+            'exported_by_name' => $causer->name ?? $causer->email ?? null,
+            'exported_by_email' => $causer->email ?? null,
+            'exported_by_role' => $causer->role ?? null,
+            'exported_by_id' => $causer->getKey(),
+            'exported_at' => now()->toIso8601String(),
+        ]);
+
+        $ordered = [];
+        foreach (self::EXPORT_PROPERTY_ORDER as $key) {
+            if (array_key_exists($key, $values)) {
+                $ordered[$key] = $values[$key];
+                unset($values[$key]);
+            }
+        }
+
+        // Cualquier propiedad extra no contemplada arriba, al final.
+        $ordered = array_merge($ordered, $values);
+
         return $this->log(
             causer: $causer,
             subject: $subject,
             event: self::EVENT_EXPORTED,
             description: $description,
-            properties: array_merge([
-                'export_format' => $format,
-                'filename' => $filename,
-                'exported_at' => now()->toIso8601String(),
-                'exported_by_id' => $causer->getKey(),
-                'exported_by_name' => $causer->name ?? $causer->email ?? null,
-                'exported_by_role' => $causer->role ?? null,
-                'ip_address' => request()?->ip(),
-                'user_agent' => request()?->userAgent(),
-            ], $properties),
+            properties: $ordered,
         );
     }
 }
