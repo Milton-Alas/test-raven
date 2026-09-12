@@ -1,5 +1,8 @@
 <?php
 
+use App\Models\Candidate;
+use App\Models\User;
+
 return [
 
     /*
@@ -38,7 +41,7 @@ return [
     'guards' => [
         'web' => [
             'driver' => 'session',
-            'provider' => 'users', //para administradores
+            'provider' => 'users', // para administradores
         ],
 
         'candidate' => [
@@ -67,12 +70,12 @@ return [
     'providers' => [
         'users' => [
             'driver' => 'eloquent',
-            'model' => env('AUTH_MODEL', App\Models\User::class),
+            'model' => env('AUTH_MODEL', User::class),
         ],
 
         'candidates' => [
             'driver' => 'eloquent',
-            'model' => App\Models\Candidate::class,
+            'model' => Candidate::class,
         ],
 
         // 'users' => [
@@ -103,6 +106,20 @@ return [
     'passwords' => [
         'users' => [
             'provider' => 'users',
+            'table' => env('AUTH_PASSWORD_RESET_TOKEN_TABLE', 'password_reset_tokens'),
+            'expire' => 60,
+            'throttle' => 60,
+        ],
+
+        /*
+         * Los candidatos no tienen recuperación de contraseña por correo: su
+         * restablecimiento es manual y lo ejecuta un administrador desde el
+         * panel (ver App\Services\CandidatePasswordResetService). Este broker
+         * se declara para que un futuro flujo de autoservicio por correo pueda
+         * apoyarse en la misma tabla de tokens.
+         */
+        'candidates' => [
+            'provider' => 'candidates',
             'table' => env('AUTH_PASSWORD_RESET_TOKEN_TABLE', 'password_reset_tokens'),
             'expire' => 60,
             'throttle' => 60,

@@ -15,11 +15,13 @@ Route::get('/', function () {
 Route::middleware('guest:candidate')->group(function () {
     // Login
     Route::get('login', [CandidateAuthController::class, 'create'])->name('login');
-    Route::post('login', [CandidateAuthController::class, 'store']);
+    Route::post('login', [CandidateAuthController::class, 'store'])
+        ->middleware('throttle:login');
 
     // Register
     Route::get('register', [CandidateAuthController::class, 'createRegister'])->name('register');
-    Route::post('register', [CandidateAuthController::class, 'storeRegister']);
+    Route::post('register', [CandidateAuthController::class, 'storeRegister'])
+        ->middleware('throttle:register');
 });
 
 // Rutas protegidas para candidatos autenticados

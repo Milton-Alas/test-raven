@@ -2,6 +2,7 @@
 
 namespace App\Filament\Resources\Candidates\Pages;
 
+use App\Filament\Resources\Candidates\Actions\ResetCandidatePasswordAction;
 use App\Filament\Resources\Candidates\CandidateResource;
 use Filament\Actions\DeleteAction;
 use Filament\Actions\ForceDeleteAction;
@@ -15,6 +16,7 @@ class EditCandidate extends EditRecord
     protected function getHeaderActions(): array
     {
         return [
+            ResetCandidatePasswordAction::make(),
             DeleteAction::make(),
             ForceDeleteAction::make(),
             RestoreAction::make(),

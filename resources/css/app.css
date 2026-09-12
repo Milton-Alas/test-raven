@@ -1,3 +1,40 @@
-@tailwind base;
-@tailwind components;
-@tailwind utilities;
+/*
+ | Tailwind CSS 4
+ | ---------------------------------------------------------------------------
+ | La configuración se hace en CSS (ya no existe tailwind.config.js).
+ | Los colores institucionales de la UES se declaran en @theme para que
+ | Tailwind genere las utilidades (text-ues-rojo, bg-ues-azul, ...).
+ | Bootstrap 5 se carga por CDN en el layout del candidato y define sus
+ | propias utilidades; las clases de Bootstrap no las genera Tailwind.
+ */
+
+@import "tailwindcss";
+
+/* Archivos que Tailwind debe escanear para detectar clases usadas. */
+@source "../../resources/views/**/*.blade.php";
+@source "../../resources/js/**/*.js";
+@source "../../public/js/**/*.js";
+
+/* El modo oscuro se activa con la clase .dark en <html>. */
+@custom-variant dark (&:where(.dark, .dark *));
+
+@plugin "@tailwindcss/forms";
+
+@theme {
+    /* Colores institucionales UES (mismos valores que bootstrap-custom.css) */
+    --color-ues-rojo: #c90019;
+    --color-ues-rojo-secundario: #8b0e13;
+    --color-ues-negro: #1a171b;
+    --color-ues-azul: #002e6a;
+    --color-ues-gris: #868789;
+    --color-ues-blanco: #ffffff;
+
+    /* Paleta heredada del tailwind.config.js anterior */
+    --color-ues-blue: #0047ab;
+    --color-ues-red: #e60000;
+    --color-ues-gold: #ffcc00;
+
+    --font-sans: "Instrument Sans", ui-sans-serif, system-ui, sans-serif,
+        "Apple Color Emoji", "Segoe UI Emoji", "Segoe UI Symbol",
+        "Noto Color Emoji";
+}

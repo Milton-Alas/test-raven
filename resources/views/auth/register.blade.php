@@ -33,6 +33,34 @@
                         <p class="text-muted">Completa el formulario para crear tu cuenta</p>
                     </div>
 
+                    {{-- Mensajes flash: incluye el aviso de límite de intentos --}}
+                    @if (session('error'))
+                        <div class="alert alert-warning d-flex align-items-start gap-2" role="alert">
+                            <i class="bi bi-exclamation-triangle-fill mt-1"></i>
+                            <div>{{ session('error') }}</div>
+                        </div>
+                    @endif
+
+                    @if (session('success'))
+                        <div class="alert alert-success d-flex align-items-start gap-2" role="alert">
+                            <i class="bi bi-check-circle-fill mt-1"></i>
+                            <div>{{ session('success') }}</div>
+                        </div>
+                    @endif
+
+                    @if ($errors->has('throttle') || $errors->has('csrf'))
+                        <div class="alert alert-danger d-flex align-items-start gap-2" role="alert">
+                            <i class="bi bi-x-circle-fill mt-1"></i>
+                            <div>
+                                <ul class="mb-0 ps-3">
+                                    @foreach ($errors->all() as $error)
+                                        <li>{{ $error }}</li>
+                                    @endforeach
+                                </ul>
+                            </div>
+                        </div>
+                    @endif
+
                     <form method="POST" action="{{ route('register') }}">
                         @csrf
 

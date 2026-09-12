@@ -2,25 +2,25 @@
 
 namespace App\Filament\Resources\TestResults\Tables;
 
-use Filament\Actions\BulkActionGroup;
+use App\Models\TestResult;
+use App\Services\ActivityLogService;
+use Barryvdh\DomPDF\Facade\Pdf;
 use Filament\Actions\Action;
+use Filament\Actions\BulkActionGroup;
 use Filament\Actions\DeleteBulkAction;
 use Filament\Actions\EditAction;
 use Filament\Actions\ForceDeleteBulkAction;
 use Filament\Actions\RestoreBulkAction;
+use Filament\Actions\ViewAction;
 use Filament\Notifications\Notification;
-use Filament\Tables\Filters\TrashedFilter;
-use Filament\Tables\Table;
 use Filament\Tables\Columns\IconColumn;
 use Filament\Tables\Columns\TextColumn;
-use Illuminate\Database\Eloquent\Builder;
-use App\Models\TestResult;
-use Illuminate\Support\Facades\Auth;
-use Filament\Actions\DeleteAction;
-use Filament\Actions\ViewAction;
-use Filament\Tables\Filters\TernaryFilter;
 use Filament\Tables\Filters\SelectFilter;
-use Barryvdh\DomPDF\Facade\Pdf;
+use Filament\Tables\Filters\TernaryFilter;
+use Filament\Tables\Filters\TrashedFilter;
+use Filament\Tables\Table;
+use Illuminate\Support\Facades\Auth;
+use Illuminate\Support\Facades\Log;
 
 class TestResultsTable
 {
@@ -29,11 +29,11 @@ class TestResultsTable
         return $table
             ->columns([
                 TextColumn::make('candidate.name')
-                ->label('Candidato')
-                ->searchable()
-                ->sortable()
-                ->weight('bold')
-                ->description(fn (TestResult $record) => "ID de Sesión: #{$record->test_session_id}"),
+                    ->label('Candidato')
+                    ->searchable()
+                    ->sortable()
+                    ->weight('bold')
+                    ->description(fn (TestResult $record) => "ID de Sesión: #{$record->test_session_id}"),
 
                 TextColumn::make('total_score')
                     ->label('Puntaje')
@@ -85,7 +85,7 @@ class TestResultsTable
             ->defaultSort('created_at', 'desc')
             ->filters([
                 TrashedFilter::make(),
-                    SelectFilter::make('diagnostic_range')
+                SelectFilter::make('diagnostic_range')
                     ->label('Rango Diagnóstico')
                     ->options([
                         1 => 'I - Superior',
@@ -108,7 +108,7 @@ class TestResultsTable
                     ->icon('heroicon-o-document-arrow-down')
                     ->color('success')
                     ->action(function (TestResult $record) {
-                        if (! class_exists(\Barryvdh\DomPDF\Facade\Pdf::class)) {
+                        if (! class_exists(Pdf::class)) {
                             Notification::make()
                                 ->danger()
                                 ->title('Paquete PDF no instalado')
@@ -118,13 +118,76 @@ class TestResultsTable
                             return null;
                         }
 
-                        $pdf = \Barryvdh\DomPDF\Facade\Pdf::loadView('reports.raven-result', [
-                            'result' => $record->load(['candidate', 'testSession']),
-                        ]);
+                        $resultado = $record->load(['candidate', 'testSession']);
+
+                        // El candidato puede estar eliminado lógicamente; sin esto
+                        // la acción fallaba con un error 500 al generar el nombre.
+                        if (! $resultado->candidate) {
+                            Notification::make()
+                                ->danger()
+                                ->title('No se puede generar el informe')
+                                ->body('El candidato asociado a este resultado fue eliminado.')
+                                ->send();
+
+                            return null;
+                        }
+
+                        $candidate = $resultado->candidate;
+                        $filename = 'resultado-'.str()->slug($candidate->name).'-'.$resultado->getKey().'.pdf';
+
+                        try {
+                            $pdf = Pdf::loadView('reports.raven-result', [
+                                'result' => $resultado,
+                            ]);
+
+                            // El informe se renderiza aquí para poder auditar la
+                            // exportación solo si realmente se generó.
+                            $contenido = $pdf->output();
+                        } catch (\Throwable $e) {
+                            Log::error('Falló la generación del PDF de resultados.', [
+                                'test_result_id' => $resultado->getKey(),
+                                'candidate_id' => $resultado->candidate_id,
+                                'error' => $e->getMessage(),
+                            ]);
+
+                            Notification::make()
+                                ->danger()
+                                ->title('No se pudo generar el informe')
+                                ->body('Ocurrió un error al construir el PDF. Revisa los registros del servidor.')
+                                ->send();
+
+                            return null;
+                        }
+
+                        // Auditoría: queda registrado quién descargó qué informe.
+                        $admin = Auth::user();
+
+                        if ($admin) {
+                            app(ActivityLogService::class)->logExport(
+                                causer: $admin,
+                                subject: $resultado,
+                                format: 'pdf',
+                                filename: $filename,
+                                description: "Informe PDF de resultados descargado por {$admin->name} para el candidato {$candidate->name}.",
+                                properties: [
+                                    'test_result_id' => $resultado->getKey(),
+                                    'test_session_id' => $resultado->test_session_id,
+                                    'candidate_id' => $candidate->id,
+                                    'candidate_name' => $candidate->name,
+                                    'candidate_email' => $candidate->email,
+                                    'candidate_dui_nit' => $candidate->dui_nit,
+                                    'total_score' => $resultado->total_score,
+                                    'percentile' => $resultado->percentile,
+                                    'diagnostic_range' => $resultado->diagnostic_range,
+                                    'diagnostic_label' => $resultado->diagnostic_label,
+                                    'report_scope' => 'diagnostico_completo',
+                                ],
+                            );
+                        }
 
                         return response()->streamDownload(
-                            fn () => print($pdf->output()),
-                            'resultado-'.str()->slug($record->candidate->name).'-'.$record->id.'.pdf'
+                            fn () => print ($contenido),
+                            $filename
                         );
                     }),
 

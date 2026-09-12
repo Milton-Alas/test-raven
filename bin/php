@@ -1,0 +1,50 @@
+#!/usr/bin/env bash
+#
+# Lanzador de la aplicación con un PHP 8.4 que incluye la extensión intl.
+#
+# Por qué existe: Filament 4 usa Illuminate\Support\Number::format(), que exige
+# ext-intl. El PHP 8.4 del sistema no tiene instalado php8.4-intl, así que
+# cualquier página del panel falla con:
+#   RuntimeException: The "intl" PHP extension is required to use the [format] method.
+#
+# Uso:
+#   ./bin/php artisan serve              # levanta el servidor en 127.0.0.1:8000
+#   ./bin/php artisan serve --port=8080
+#   ./bin/php artisan route:list         # cualquier comando de artisan
+#   ./bin/php test                       # atajo de "artisan test"
+#   ./bin/php tinker
+#   ./bin/php composer.phar install      # composer ejecutado con este PHP
+#
+# Solución definitiva (recomendada en el servidor): instalar la extensión a
+# nivel de sistema y ya no depender de este lanzador.
+#   sudo apt-get install -y php8.4-intl && sudo systemctl restart php8.4-fpm
+
+set -euo pipefail
+
+PROJECT_ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
+PHP_BIN="$PROJECT_ROOT/.tools/php84/php"
+
+if [[ ! -x "$PHP_BIN" ]]; then
+    echo "ERROR: no se encontró el binario PHP en $PHP_BIN" >&2
+    echo "Recupéralo con:" >&2
+    echo "  mkdir -p .tools/php84 && cd .tools/php84" >&2
+    echo "  curl -sSL -o php.tar.gz https://dl.static-php.dev/static-php-cli/bulk/php-8.4.23-cli-linux-x86_64.tar.gz" >&2
+    echo "  tar xzf php.tar.gz && rm php.tar.gz && chmod +x php" >&2
+    exit 1
+fi
+
+if ! "$PHP_BIN" -m | grep -qx intl; then
+    echo "ERROR: el binario $PHP_BIN no tiene habilitada la extensión intl," >&2
+    echo "que Filament 4 necesita para Number::format()." >&2
+    exit 1
+fi
+
+cd "$PROJECT_ROOT"
+
+# Atajo: "test" equivale a "artisan test".
+if [[ "${1:-}" == "test" ]]; then
+    shift
+    exec "$PHP_BIN" artisan test "$@"
+fi
+
+exec "$PHP_BIN" "$@"
