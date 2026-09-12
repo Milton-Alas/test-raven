@@ -19,7 +19,8 @@ Route::middleware('guest:candidate')->group(function () {
 
     // Register
     Route::get('register', [CandidateAuthController::class, 'createRegister'])->name('register');
-    Route::post('register', [CandidateAuthController::class, 'storeRegister']);
+    Route::post('register', [CandidateAuthController::class, 'storeRegister'])
+        ->middleware('throttle:register');
 });
 
 // Rutas protegidas para candidatos autenticados

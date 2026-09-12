@@ -18,6 +18,7 @@ class ActivityLogService
      * agrega al final, en el orden en que se recibió.
      */
     private const EXPORT_PROPERTY_ORDER = [
+        'export_format',
         'filename',
         'exported_by_name',
         'exported_by_email',
@@ -61,8 +62,9 @@ class ActivityLogService
      *
      * @param  Model  $causer  Usuario que descarga (admin o reporter).
      * @param  Model|null  $subject  Entidad exportada (ej. el TestResult).
-     * @param  string  $format  Formato del archivo: 'pdf', 'csv', ... (no se
-     *                          persiste en properties; el filename ya lo refleja).
+     * @param  string  $format  Formato del archivo: 'pdf', 'csv', ... Se persiste
+     *                          en `properties.export_format` para poder distinguir el
+     *                          tipo de exportación sin depender del nombre del archivo.
      * @param  string  $filename  Nombre del archivo entregado.
      * @param  array  $properties  Metadatos adicionales del contexto exportado
      *                             (candidate_id, test_result_id, etc.).
@@ -76,6 +78,7 @@ class ActivityLogService
         array $properties = []
     ): ActivityLog {
         $values = array_merge($properties, [
+            'export_format' => $format,
             'filename' => $filename,
             'exported_by_name' => $causer->name ?? $causer->email ?? null,
             'exported_by_email' => $causer->email ?? null,
