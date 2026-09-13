@@ -10,42 +10,6 @@
     
     @vite(['resources/css/bootstrap-custom.css'])
 
-    <style>
-
-        .input-group .form-control {
-            border-right: none;
-        }
-
-        .input-group .btn-password-toggle {
-            border-color: #dee2e6; 
-            border-left: none; 
-            background-color: #fff;
-            color: #6c757d; 
-            transition: color 0.2s ease-in-out;
-        }
-
-        .input-group .form-control:focus,
-        .input-group .btn-password-toggle:focus {
-            box-shadow: none !important;
-            border-color: #86b7fe !important;
-        }
-
-        .input-group:focus-within {
-            border-radius: 0.5rem;
-            box-shadow: 0 0 0 0.25rem rgba(13, 110, 253, 0.25);
-        }
-
-        .input-group:focus-within .form-control,
-        .input-group:focus-within .btn-password-toggle {
-            border-color: #86b7fe !important;
-        }
-
-        .input-group .btn-password-toggle:hover,
-        .input-group .btn-password-toggle:focus {
-            background-color: #fff !important;
-            color: #0047AB !important;
-        }
-    </style>
 </head>
 <body class="bg-light d-flex align-items-center min-vh-100">
 

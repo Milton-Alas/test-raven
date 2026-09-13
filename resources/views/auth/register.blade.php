@@ -84,16 +84,29 @@
 
                                 <div class="col-md-6">
                                     <label for="dui_nit" class="form-label">DUI o NIT</label>
-                                    <input id="dui_nit" type="text" name="dui_nit" value="{{ old('dui_nit') }}" required 
-                                           class="form-control form-control-lg @error('dui_nit') is-invalid @enderror">
-                                    @error('dui_nit') <div class="invalid-feedback">{{ $message }}</div> @enderror
+                                    <div class="input-group has-validation">
+                                        <input id="dui_nit" type="text" name="dui_nit" value="{{ old('dui_nit') }}" required 
+                                            class="form-control form-control-lg @error('dui_nit') is-invalid @enderror" 
+                                            placeholder="DUI o NIT"
+                                            autocomplete="off">
+                                        <div class="invalid-feedback" id="dui_nit_feedback">
+                                            @error('dui_nit') {{ $message }} @else Ingresa un DUI válido (9 dígitos) o NIT (14 dígitos). @enderror
+                                        </div>
+                                    </div>
                                 </div>
 
                                 <div class="col-md-6">
                                     <label for="age" class="form-label">Edad</label>
-                                    <input id="age" type="number" name="age" value="{{ old('age') }}" required 
-                                           class="form-control form-control-lg @error('age') is-invalid @enderror">
-                                    @error('age') <div class="invalid-feedback">{{ $message }}</div> @enderror
+                                    <div class="input-group has-validation">
+                                        <input id="age" type="number" name="age" required 
+                                            class="form-control form-control-lg @error('age') is-invalid @enderror" 
+                                            min="10" max="99" maxlength="2"
+                                            oninput="if(this.value.length > 2) this.value = this.value.slice(0, 2);">
+                                        
+                                        <div class="invalid-feedback">
+                                            @error('age') {{ $message }} @else Ingresa una edad válida de dos dígitos (10 a 99). @enderror
+                                        </div>
+                                    </div>
                                 </div>
 
                                 <div class="col-md-6">
@@ -118,17 +131,39 @@
                         <div class="section-divider">
                             <h2 class="h5 fw-bold mb-4 text-dark">Seguridad</h2>
                             <div class="row g-3">
+                                
+                                <!-- Campo Contraseña -->
                                 <div class="col-md-6">
-                                    <label for="password" class="form-label">Contraseña</label>
-                                    <input id="password" type="password" name="password" required 
-                                           class="form-control form-control-lg @error('password') is-invalid @enderror">
-                                    @error('password') <div class="invalid-feedback">{{ $message }}</div> @enderror
+                                    <label for="password" class="form-label small fw-bold">Contraseña</label>
+                                    <div class="input-group has-validation">
+                                        <input id="password" type="password" name="password" required 
+                                            class="form-control form-control-lg border-end-0 @error('password') is-invalid @enderror" 
+                                            placeholder="••••••••">
+                                        <button class="btn btn-password-toggle px-3" type="button" id="togglePassword">
+                                            <i class="bi bi-eye" id="toggleIcon"></i>
+                                        </button>
+                                        @error('password') 
+                                            <div class="invalid-feedback">{{ $message }}</div> 
+                                        @enderror
+                                    </div>
                                 </div>
+
+                                <!-- Campo Confirmar Contraseña -->
                                 <div class="col-md-6">
-                                    <label for="password_confirmation" class="form-label">Confirmar Contraseña</label>
-                                    <input id="password_confirmation" type="password" name="password_confirmation" required 
-                                           class="form-control form-control-lg">
+                                    <label for="password_confirmation" class="form-label small fw-bold">Confirmar Contraseña</label>
+                                    <div class="input-group has-validation">
+                                        <input id="password_confirmation" type="password" name="password_confirmation" required 
+                                            class="form-control form-control-lg border-end-0" 
+                                            placeholder="••••••••">
+                                        <button class="btn btn-password-toggle px-3" type="button" id="togglePasswordConfirm">
+                                            <i class="bi bi-eye" id="toggleIconConfirm"></i>
+                                        </button>
+                                        <div class="invalid-feedback">
+                                            Las contraseñas no coinciden.
+                                        </div>
+                                    </div>
                                 </div>
+
                             </div>
                         </div>
 
@@ -154,5 +189,148 @@
     </div>
 
     <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
+
+    <script>
+
+        /* Para poder visualizar la contraseña al hacer clic en el icono del ojo */
+        document.addEventListener('DOMContentLoaded', function () {
+
+        function setupPasswordToggle(buttonId, inputId, iconId) {
+            const toggleBtn = document.querySelector(buttonId);
+            const inputField = document.querySelector(inputId);
+            const icon = document.querySelector(iconId);
+
+            if (toggleBtn && inputField && icon) {
+                toggleBtn.addEventListener('click', function () {
+                    const isPassword = inputField.getAttribute('type') === 'password';
+                    inputField.setAttribute('type', isPassword ? 'text' : 'password');
+                    
+                    icon.classList.toggle('bi-eye', !isPassword);
+                    icon.classList.toggle('bi-eye-slash', isPassword);
+                });
+            }
+        }
+        setupPasswordToggle('#togglePassword', '#password', '#toggleIcon');
+        setupPasswordToggle('#togglePasswordConfirm', '#password_confirmation', '#toggleIconConfirm');
+
+        const password = document.getElementById('password');
+        const confirmPassword = document.getElementById('password_confirmation');
+        const form = password ? password.closest('form') : null;
+
+        function validatePasswordMatch() {
+            if (!password || !confirmPassword) return;
+
+            if (confirmPassword.value === '') {
+                confirmPassword.setCustomValidity('');
+            } else if (password.value !== confirmPassword.value) {
+                confirmPassword.setCustomValidity('Las contraseñas no coinciden');
+            } else {
+                confirmPassword.setCustomValidity('');
+            }
+        }
+
+        if (password && confirmPassword) {
+            password.addEventListener('input', validatePasswordMatch);
+            confirmPassword.addEventListener('input', validatePasswordMatch);
+        }
+
+        const edadInput = document.getElementById('age');
+
+            if (edadInput) {
+                edadInput.addEventListener('keydown', function (e) {
+                    if (['e', 'E', '+', '-', '.'].includes(e.key)) {
+                        e.preventDefault();
+                    }
+                });
+
+                edadInput.addEventListener('input', function () {
+                    if (this.value.length > 2) {
+                        this.value = this.value.slice(0, 2);
+                    }
+
+                    const val = parseInt(this.value, 10);
+                    if (this.value.length === 2 && val >= 10 && val <= 99) {
+                        this.setCustomValidity('');
+                    } else if (this.value === '') {
+                        this.setCustomValidity('');
+                    } else {
+                        this.setCustomValidity('La edad debe tener 2 dígitos (10 a 99).');
+                    }
+                });
+            }
+        
+        // Validación y formateo automático de DUI / NIT
+        const duiNitInput = document.getElementById('dui_nit');
+        const duiNitFeedback = document.getElementById('dui_nit_feedback');
+
+        if (duiNitInput) {
+            duiNitInput.addEventListener('input', function (e) {
+
+                let digits = this.value.replace(/\D/g, '');
+
+                // Limitar a un máximo de 14 dígitos (longitud del NIT sin guiones)
+                if (digits.length > 14) {
+                    digits = digits.slice(0, 14);
+                }
+
+                let formattedValue = '';
+
+                // Determinar formato según la cantidad de dígitos ingresados
+                if (digits.length <= 9) {
+                    // Formato DUI: XXXXXXXX-X (8 dígitos - 1 dígito)
+                    if (digits.length > 8) {
+                        formattedValue = digits.slice(0, 8) + '-' + digits.slice(8, 9);
+                    } else {
+                        formattedValue = digits;
+                    }
+                } else {
+                    // Formato NIT: XXXX-XXXXXX-XXX-X (4-6-3-1)
+                    formattedValue = digits.slice(0, 4);
+                    if (digits.length > 4) {
+                        formattedValue += '-' + digits.slice(4, 10);
+                    }
+                    if (digits.length > 10) {
+                        formattedValue += '-' + digits.slice(10, 13);
+                    }
+                    if (digits.length > 13) {
+                        formattedValue += '-' + digits.slice(13, 14);
+                    }
+                }
+
+                this.value = formattedValue;
+
+                if (digits.length === 9 || digits.length === 14) {
+                    this.setCustomValidity('');
+                } else if (digits.length === 0) {
+                    this.setCustomValidity('');
+                } else {
+                    this.setCustomValidity('El documento debe tener 9 dígitos (DUI) o 14 dígitos (NIT).');
+                    if (duiNitFeedback) {
+                        duiNitFeedback.textContent = 'Ingresa un formato completo de DUI (9 dígitos) o NIT (14 dígitos).';
+                    }
+                }
+            });
+
+            // Prevenir el ingreso directo de guiones o letras con el teclado
+            duiNitInput.addEventListener('keydown', function (e) {
+                if (['e', 'E', '+', '-', '.'].includes(e.key)) {
+                    e.preventDefault();
+                }
+            });
+        }
+
+        if (form) {
+            form.addEventListener('submit', function (event) {
+                validatePasswordMatch();
+
+                if (!form.checkValidity()) {
+                    event.preventDefault();
+                    event.stopPropagation();
+                }
+                form.classList.add('was-validated');
+            }, false);
+        }
+    });
+    </script>
 </body>
 </html>

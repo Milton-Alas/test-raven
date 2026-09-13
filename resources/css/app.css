@@ -8,7 +8,7 @@
  | propias utilidades; las clases de Bootstrap no las genera Tailwind.
  */
 
-@import "tailwindcss";
+/*@import "tailwindcss";*/
 
 /* Archivos que Tailwind debe escanear para detectar clases usadas. */
 @source "../../resources/views/**/*.blade.php";
