@@ -21,6 +21,8 @@ use Filament\Tables\Filters\TrashedFilter;
 use Filament\Tables\Table;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\Log;
+use pxlrbt\FilamentExcel\Actions\Tables\ExportAction;
+use pxlrbt\FilamentExcel\Exports\ExcelExport;
 
 class TestResultsTable
 {
@@ -100,6 +102,24 @@ class TestResultsTable
                     ->label('Estado de Validez')
                     ->placeholder('Todos')
                     ->native(false),
+            ])
+            ->headerActions([
+                ExportAction::make('exportar')
+                    ->label('Exportar resultados')
+                    ->icon('heroicon-o-arrow-down-tray')
+                    ->color('success')
+                    ->exports([
+                        ExcelExport::make('excel')
+                            ->label('Exportar a Excel')
+                            ->fromTable()
+                            ->withFilename('resultados-'.now()->format('Y-m-d')),
+
+                        ExcelExport::make('csv')
+                            ->label('Exportar a CSV')
+                            ->fromTable()
+                            ->withWriterType(\Maatwebsite\Excel\Excel::CSV)
+                            ->withFilename('resultados-'.now()->format('Y-m-d')),
+                    ]),
             ])
             ->recordActions([
                 ViewAction::make(),
