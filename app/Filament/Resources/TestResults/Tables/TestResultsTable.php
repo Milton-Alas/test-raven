@@ -2,6 +2,7 @@
 
 namespace App\Filament\Resources\TestResults\Tables;
 
+use App\Filament\Resources\TestResults\TestResultResource;
 use App\Models\TestResult;
 use App\Services\ActivityLogService;
 use Barryvdh\DomPDF\Facade\Pdf;
@@ -21,9 +22,9 @@ use Filament\Tables\Filters\TrashedFilter;
 use Filament\Tables\Table;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\Log;
+use Maatwebsite\Excel\Excel;
 use pxlrbt\FilamentExcel\Actions\Tables\ExportAction;
 use pxlrbt\FilamentExcel\Exports\ExcelExport;
-use pxlrbt\FilamentExcel\Exports\Exporter;
 
 class TestResultsTable
 {
@@ -129,7 +130,7 @@ class TestResultsTable
                     ->exports([
                         ExcelExport::make('csv')
                             ->fromTable()
-                            ->withWriterType(\Maatwebsite\Excel\Excel::CSV)
+                            ->withWriterType(Excel::CSV)
                             ->withFilename('resultados-'.now()->format('Y-m-d')),
                     ])
                     ->after(function (ExportAction $action): void {
@@ -139,7 +140,7 @@ class TestResultsTable
                         );
                     }),
             ])
-             
+
             ->recordActions([
                 ViewAction::make(),
                 Action::make('pdf')
@@ -235,12 +236,18 @@ class TestResultsTable
             ])
             ->toolbarActions([
                 BulkActionGroup::make([
-                    DeleteBulkAction::make()->authorize(fn () => \Illuminate\Support\Facades\Gate::allows('deleteAny', TestResult::class)),
-                    ForceDeleteBulkAction::make()->authorize(fn () => \Illuminate\Support\Facades\Gate::allows('forceDeleteAny', TestResult::class)),
-                    RestoreBulkAction::make()->authorize(fn () => \Illuminate\Support\Facades\Gate::allows('restoreAny', TestResult::class)),
+                    // Visibilidad explícita: Filament no liga las acciones
+                    // masivas a los métodos canXAny() del Resource en este contexto.
+                    DeleteBulkAction::make()
+                        ->visible(fn (): bool => TestResultResource::canDeleteAny()),
+                    ForceDeleteBulkAction::make()
+                        ->visible(fn (): bool => TestResultResource::canForceDeleteAny()),
+                    RestoreBulkAction::make()
+                        ->visible(fn (): bool => TestResultResource::canRestoreAny()),
                 ]),
             ]);
     }
+
     private static function registrarExportacionMasiva(
         ExportAction $action,
         string $format

@@ -21,6 +21,15 @@ class CandidateLoginThrottleTest extends TestCase
 {
     use RefreshDatabase;
 
+    /**
+     * Token de sesión explícito.
+     *
+     * No se usa csrf_token(): tras cerrar la sesión del guard, el helper puede
+     * devolver una cadena vacía según el orden de arranque del contenedor, y la
+     * petición falla con 419 sin llegar al controlador.
+     */
+    private const TOKEN = 'token-de-pruebas';
+
     protected function setUp(): void
     {
         parent::setUp();
@@ -51,12 +60,13 @@ class CandidateLoginThrottleTest extends TestCase
     {
         auth('candidate')->logout();
 
-        return $this->withServerVariables(['REMOTE_ADDR' => $ip])
+        return $this->withSession(['_token' => self::TOKEN])
+            ->withServerVariables(['REMOTE_ADDR' => $ip])
             ->from('/login')
             ->post('/login', [
                 'login' => $login,
                 'password' => $password,
-                '_token' => csrf_token(),
+                '_token' => self::TOKEN,
             ]);
     }
 

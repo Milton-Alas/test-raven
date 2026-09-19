@@ -40,11 +40,18 @@ return Application::configure(basePath: dirname(__DIR__))
 
             // La espera se expresa en segundos, minutos u horas según la ventana
             // del limitador: el login bloquea por minutos y el registro por horas.
+            // Se calcula primero en minutos y se promueve a horas solo cuando la
+            // espera es de una hora exacta o más, para que una ventana de 3600
+            // segundos se anuncie como "1 hora" y no como "60 minutos".
+            $minutos = (int) ceil($retryAfter / 60);
+            $horas = intdiv($minutos, 60);
+
             $espera = match (true) {
                 $retryAfter <= 0 => null,
                 $retryAfter < 60 => "{$retryAfter} segundo(s)",
-                $retryAfter < 3600 => max(1, (int) ceil($retryAfter / 60)).' minuto(s)',
-                default => max(1, (int) ceil($retryAfter / 3600)).' hora(s)',
+                $horas < 1 => max(1, $minutos).' minuto(s)',
+                $minutos % 60 === 0 => "{$horas} hora(s)",
+                default => "{$horas} hora(s) y ".($minutos % 60).' minuto(s)',
             };
 
             $mensaje = $espera

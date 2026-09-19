@@ -3,7 +3,7 @@
 namespace App\Filament\Resources\Candidates\Tables;
 
 use App\Filament\Resources\Candidates\Actions\ResetCandidatePasswordAction;
-use App\Models\Candidate;
+use App\Filament\Resources\Candidates\CandidateResource;
 use App\Services\ActivityLogService;
 use Filament\Actions\BulkAction;
 use Filament\Actions\BulkActionGroup;
@@ -12,7 +12,6 @@ use Filament\Actions\EditAction;
 use Filament\Actions\ForceDeleteBulkAction;
 use Filament\Actions\RestoreBulkAction;
 use Filament\Actions\ViewAction;
-use Illuminate\Support\Facades\Gate;
 use Filament\Tables\Columns\IconColumn;
 use Filament\Tables\Columns\TextColumn;
 use Filament\Tables\Filters\TernaryFilter;
@@ -108,11 +107,19 @@ class CandidatesTable
             ])
             ->toolbarActions([
                 BulkActionGroup::make([
-                    DeleteBulkAction::make()->authorize(fn () => \Illuminate\Support\Facades\Gate::allows('deleteAny', Candidate::class)),
-                    ForceDeleteBulkAction::make()->authorize(fn () => \Illuminate\Support\Facades\Gate::allows('forceDeleteAny', Candidate::class)),
-                    RestoreBulkAction::make()->authorize(fn () => \Illuminate\Support\Facades\Gate::allows('restoreAny', Candidate::class)),
+                    // Filament no liga las acciones masivas a los métodos
+                    // canXAny() del Resource en este contexto: se aplica la
+                    // visibilidad explícitamente. El borrado masivo respeta la
+                    // misma regla que el borrado individual (solo admin), y el
+                    // borrado permanente y la restauración son admin.
+                    DeleteBulkAction::make()
+                        ->visible(fn (): bool => CandidateResource::canDeleteAny()),
+                    ForceDeleteBulkAction::make()
+                        ->visible(fn (): bool => CandidateResource::canForceDeleteAny()),
+                    RestoreBulkAction::make()
+                        ->visible(fn (): bool => CandidateResource::canRestoreAny()),
                     BulkAction::make('export')
-                        ->label('Exportar Seleccionados')       
+                        ->label('Exportar Seleccionados')
                         ->icon('heroicon-o-arrow-down-tray')
                         ->color('success')
                         ->action(function (EloquentCollection $records): StreamedResponse {
@@ -165,9 +172,9 @@ class CandidatesTable
             'Edad',
             'Activo',
             'Test completado',
-                            DeleteBulkAction::make()->authorize(fn () => Auth::user()?->can('deleteAny', Candidate::class)),
-                            ForceDeleteBulkAction::make()->authorize(fn () => Auth::user()?->can('forceDeleteAny', Candidate::class)),
-                            RestoreBulkAction::make()->authorize(fn () => Auth::user()?->can('restoreAny', Candidate::class)),
+            'Percentil',
+            'Diagnostico',
+            'Puntaje total',
             'Fecha finalizacion test',
         ];
 

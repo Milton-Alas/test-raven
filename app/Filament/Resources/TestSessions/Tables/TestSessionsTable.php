@@ -2,20 +2,18 @@
 
 namespace App\Filament\Resources\TestSessions\Tables;
 
+use App\Filament\Resources\TestSessions\TestSessionResource;
+use App\Models\TestSession;
 use Filament\Actions\BulkActionGroup;
 use Filament\Actions\DeleteBulkAction;
 use Filament\Actions\ForceDeleteBulkAction;
 use Filament\Actions\RestoreBulkAction;
 use Filament\Actions\ViewAction;
-use Filament\Tables\Filters\TrashedFilter;
-use Filament\Tables\Table;
 use Filament\Tables\Columns\IconColumn;
 use Filament\Tables\Columns\TextColumn;
-use Illuminate\Database\Eloquent\Builder;
-use App\Models\TestSession;
-use Illuminate\Support\Facades\Auth;
 use Filament\Tables\Filters\SelectFilter;
-use Illuminate\View\View;
+use Filament\Tables\Filters\TrashedFilter;
+use Filament\Tables\Table;
 
 class TestSessionsTable
 {
@@ -24,11 +22,11 @@ class TestSessionsTable
         return $table
             ->columns([
                 TextColumn::make('candidate.name')
-                ->label('Candidato')
-                ->searchable()
-                ->sortable()
-                ->weight('bold')
-                ->description(fn (TestSession $record) => $record->ip_address ?? 'Sin IP registrada'),
+                    ->label('Candidato')
+                    ->searchable()
+                    ->sortable()
+                    ->weight('bold')
+                    ->description(fn (TestSession $record) => $record->ip_address ?? 'Sin IP registrada'),
 
                 TextColumn::make('started_at')
                     ->label('Inicio')
@@ -39,27 +37,27 @@ class TestSessionsTable
                 TextColumn::make('status')
                     ->label('Estado')
                     ->badge()
-                    ->color(fn ($state) => match($state) {
+                    ->color(fn ($state) => match ($state) {
                         'in_progress' => 'warning',
-                        'completed'   => 'success',
-                        'timeout'     => 'danger',
-                        default       => 'gray'
+                        'completed' => 'success',
+                        'timeout' => 'danger',
+                        default => 'gray'
                     })
-                    ->icon(fn ($state) => match($state) {
+                    ->icon(fn ($state) => match ($state) {
                         'in_progress' => 'heroicon-m-play',
-                        'completed'   => 'heroicon-m-check-badge',
-                        'timeout'     => 'heroicon-m-clock',
-                        default       => 'heroicon-m-question-mark-circle'
+                        'completed' => 'heroicon-m-check-badge',
+                        'timeout' => 'heroicon-m-clock',
+                        default => 'heroicon-m-question-mark-circle'
                     }),
 
                 TextColumn::make('progress_percentage')
                     ->label('Progreso')
-                    ->state(fn (TestSession $record) => round($record->progress_percentage) . '%')
+                    ->state(fn (TestSession $record) => round($record->progress_percentage).'%')
                     ->alignCenter()
-                    ->color(fn ($state) => match(true) {
-                        (int)$state >= 100 => 'success',
-                        (int)$state >= 50  => 'info',
-                        default            => 'warning'
+                    ->color(fn ($state) => match (true) {
+                        (int) $state >= 100 => 'success',
+                        (int) $state >= 50 => 'info',
+                        default => 'warning'
                     })
                     ->weight('bold'),
 
@@ -75,16 +73,16 @@ class TestSessionsTable
             ->filters([
                 TrashedFilter::make(),
                 SelectFilter::make('status')
-                ->label('Filtrar por Estado')
-                ->options([
-                    'in_progress' => 'En Progreso',
-                    'completed'   => 'Completado',
-                    'timeout'     => 'Tiempo Expirado',
-                ])
-                ->native(false),
+                    ->label('Filtrar por Estado')
+                    ->options([
+                        'in_progress' => 'En Progreso',
+                        'completed' => 'Completado',
+                        'timeout' => 'Tiempo Expirado',
+                    ])
+                    ->native(false),
             ])
             ->recordActions([
-                //ViewAction::make(),
+                // ViewAction::make(),
                 ViewAction::make()
                     ->label('Ver Detalles')
                     ->icon('heroicon-m-eye')
@@ -92,9 +90,15 @@ class TestSessionsTable
             ])
             ->toolbarActions([
                 BulkActionGroup::make([
-                    DeleteBulkAction::make()->authorize(fn () => \Illuminate\Support\Facades\Gate::allows('deleteAny', TestSession::class)),
-                    ForceDeleteBulkAction::make()->authorize(fn () => \Illuminate\Support\Facades\Gate::allows('forceDeleteAny', TestSession::class)),
-                    RestoreBulkAction::make()->authorize(fn () => \Illuminate\Support\Facades\Gate::allows('restoreAny', TestSession::class)),
+                    // La sesión del test es evidencia del proceso: el Resource
+                    // responde false a las abilities de borrado, así que estas
+                    // acciones quedan ocultas también para el administrador.
+                    DeleteBulkAction::make()
+                        ->visible(fn (): bool => TestSessionResource::canDeleteAny()),
+                    ForceDeleteBulkAction::make()
+                        ->visible(fn (): bool => TestSessionResource::canForceDeleteAny()),
+                    RestoreBulkAction::make()
+                        ->visible(fn (): bool => TestSessionResource::canRestoreAny()),
                 ]),
             ]);
     }

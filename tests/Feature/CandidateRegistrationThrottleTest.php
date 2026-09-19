@@ -19,6 +19,11 @@ class CandidateRegistrationThrottleTest extends TestCase
     use RefreshDatabase;
 
     /**
+     * Token de sesión explícito (ver comentario en CandidateLoginThrottleTest).
+     */
+    private const TOKEN = 'token-de-pruebas';
+
+    /**
      * Datos válidos de un candidato, con el DUI/NIT y el correo parametrizables.
      *
      * @return array<string, mixed>
@@ -34,7 +39,7 @@ class CandidateRegistrationThrottleTest extends TestCase
             'age' => 25,
             'occupation' => 'Estudiante',
             'education_level' => 'Universitario',
-            '_token' => csrf_token(),
+            '_token' => self::TOKEN,
         ];
     }
 
@@ -49,7 +54,8 @@ class CandidateRegistrationThrottleTest extends TestCase
     {
         auth('candidate')->logout();
 
-        return $this->withServerVariables(['REMOTE_ADDR' => $ip])
+        return $this->withSession(['_token' => self::TOKEN])
+            ->withServerVariables(['REMOTE_ADDR' => $ip])
             ->from('/register')
             ->post('/register', $datos);
     }
@@ -148,11 +154,11 @@ class CandidateRegistrationThrottleTest extends TestCase
                 'email' => 'no-es-un-email',
                 'dui_nit' => '',
                 'password' => 'x',
-                '_token' => csrf_token(),
+                '_token' => self::TOKEN,
             ]);
         }
 
-        $this->registrarDesde('10.0.0.5', ['email' => 'no-es-un-email', '_token' => csrf_token()])
+        $this->registrarDesde('10.0.0.5', ['email' => 'no-es-un-email', '_token' => self::TOKEN])
             ->assertStatus(429);
     }
 
@@ -181,7 +187,8 @@ class CandidateRegistrationThrottleTest extends TestCase
         // El siguiente intento vuelve al formulario con el mensaje de error.
         auth('candidate')->logout();
 
-        $respuesta = $this->withServerVariables(['REMOTE_ADDR' => $ip])
+        $respuesta = $this->withSession(['_token' => self::TOKEN])
+            ->withServerVariables(['REMOTE_ADDR' => $ip])
             ->post('/register', $this->datos(6));
 
         $respuesta->assertStatus(429);
