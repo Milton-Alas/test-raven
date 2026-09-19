@@ -6,15 +6,58 @@
     <title>Informe Raven - {{ $result->candidate->name }}</title>
     <style>
         @page {
-            margin: 20mm 15mm;
+            margin: 25px 35px;
         }
 
+        .university-header {
+            width: 100%;
+            height: 90px;
+            border-bottom: 2px solid #0047AB;
+            margin-bottom: 20px;
+            border-collapse: collapse;
+        }
+
+        .university-header td {
+            width: 33.33%;
+            height: 90px;
+            vertical-align: middle;
+        }
+
+        .header-spacer {
+            text-align: left;
+        }
+
+        .university-info {
+            text-align: center;
+        }
+
+        .logo-container {
+            text-align: right;
+        }
+
+        .logo {
+            width: 80px;
+            height: auto;
+        }
+
+        .university-name {
+            font-size: 16px;
+            font-weight: bold;
+            color: #0047AB;
+            white-space: nowrap;
+        }
+
+        .university-subtitle {
+            font-size: 10px;
+            margin-top: 4px;
+        }
+        /*
         * {
             margin: 0;
             padding: 0;
             box-sizing: border-box;
         }
-        
+        */
         body { 
             font-family: DejaVu Sans, Arial, sans-serif; 
             font-size: 10pt; 
@@ -255,6 +298,34 @@
     </style>
 </head>
 <body>
+
+    <table class="university-header">
+    <tr>
+            <td class="header-spacer"></td>
+
+            <td class="university-info">
+                <div class="university-name">
+                    UNIVERSIDAD DE EL SALVADOR
+                </div>
+
+                <div class="university-subtitle">
+                    Facultad Multidisciplinaria de Occidente
+                </div>
+
+                <div class="university-subtitle">
+                    Sistema de Evaluación Psicométrica
+                </div>
+            </td>
+
+            <td class="logo-container">
+                <img
+                    class="logo"
+                    src="{{ public_path('logo/ues1.png') }}"
+                    alt="Logo UES"
+                >
+            </td>
+        </tr>
+    </table>
     @php
         $candidate = $result->candidate;
         $session = $result->testSession;
@@ -265,9 +336,11 @@
 
     <div class="page">
         <div class="header">
-            @if(file_exists(public_path('images/logo.png')))
-                <img src="{{ public_path('images/logo.png') }}" class="logo" alt="Logo">
+            <!--
+            @if(file_exists(public_path('logo/ues1.png')))
+                <img src="{{ public_path('logo/ues1.png') }}" class="logo" alt="Logo">
             @endif
+            -->
             <h1>Informe de Resultados</h1>
             <h2>Test de Matrices Progresivas de Raven</h2>
             <p style="font-size: 10pt; margin: 5px 0 0 0; color: #0047AB;">Escala General para Adultos</p>

@@ -122,9 +122,24 @@
                             <h2 class="h5 fw-bold mb-4 text-dark">Información Académica</h2>
                             <div class="col-12">
                                 <label for="education_level" class="form-label">Nivel de Estudios</label>
-                                <input id="education_level" type="text" name="education_level" value="{{ old('education_level') }}" required 
-                                       class="form-control form-control-lg @error('education_level') is-invalid @enderror">
-                                @error('education_level') <div class="invalid-feedback">{{ $message }}</div> @enderror
+                                <div class="input-group has-validation">
+                                    <select id="education_level" name="education_level" required 
+                                            class="form-select form-select-lg @error('education_level') is-invalid @enderror">
+                                        <option value="" disabled {{ old('education_level') ? '' : 'selected' }}>Selecciona una opción...</option>
+                                        <option value="Bachillerato" {{ old('education_level') == 'Bachillerato' ? 'selected' : '' }}>Bachillerato</option>
+                                        <option value="Técnico" {{ old('education_level') == 'Técnico' ? 'selected' : '' }}>Técnico</option>
+                                        <option value="Estudiante Universitario" {{ old('education_level') == 'Estudiante Universitario' ? 'selected' : '' }}>Estudiante Universitario</option>
+                                        <option value="Graduado Universitario" {{ old('education_level') == 'Graduado Universitario' ? 'selected' : '' }}>Graduado Universitario</option>
+                                    </select>
+                                    
+                                    <div class="invalid-feedback">
+                                        @error('education_level') 
+                                            {{ $message }} 
+                                        @else 
+                                            Por favor selecciona tu nivel de estudios. 
+                                        @enderror
+                                    </div>
+                                </div>
                             </div>
                         </div>
 
