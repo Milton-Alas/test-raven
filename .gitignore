@@ -23,6 +23,11 @@
 /storage/framework/views/
 /storage/logs/
 
+# Enlace simbólico de storage: lo crea "php artisan storage:link".
+# No se versiona porque apunta a una ruta absoluta de la máquina de desarrollo y
+# quedaría roto en cualquier otro entorno (staging, producción, un clon limpio).
+/public/storage
+
 # Archivos de compilación de assets
 /public/build/
 /public/hot

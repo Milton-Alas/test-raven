@@ -1,4 +1,21 @@
+# Contenido de storage/app/public que forma parte del repositorio.
+#
+# Se versiona TODO lo que la aplicación necesita para funcionar en un clon
+# limpio, porque hasta ahora no era así y el fallo solo aparecía fuera de la
+# máquina de desarrollo:
+#
+#   - matrices/  y options/  son las rutas que la BASE guarda y que sirve la
+#     vista del candidato (asset('storage/...')). Sin ellas, las 60 láminas dan
+#     404 al rendir el test en un entorno recién desplegado.
+#   - test-images/ es el material de origen del que RavenTestSeeder copia hacia
+#     matrices/ y options/. Se mantiene versionado para poder resembrar.
+#
+# Se ignora el resto (subidas nuevas, archivos temporales, etc.).
 *
 !.gitignore
+!matrices/
+!matrices/**
+!options/
+!options/**
 !test-images/
 !test-images/**

@@ -40,7 +40,14 @@ class TestQuestionsTable
                 ImageColumn::make('matrix_image_path')
                     ->label('Matriz')
                     ->disk('public')
-                    ->state(fn ($record) => $record->matrix_image_path ? "test-images/{$record->matrix_image_path}" : null)
+                    // La ruta guardada en la base ya es la definitiva
+                    // (matrices/{serie}/{archivo}); antes se le anteponía
+                    // "test-images/", un prefijo que la base nunca escribe y que
+                    // hacía que la miniatura del panel se viera solo porque en la
+                    // máquina de desarrollo existía una copia duplicada de los
+                    // archivos. Unificado a la convención de la base, que es la
+                    // misma que resuelve la vista del candidato.
+                    ->state(fn ($record) => $record->matrix_image_path)
                     ->square()
                     ->size(60)
                     ->extraImgAttributes(['class' => 'rounded shadow-sm border border-gray-200']),

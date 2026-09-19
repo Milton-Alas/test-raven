@@ -10,6 +10,7 @@ use Filament\Forms\Components\Select;
 use Filament\Forms\Components\TextInput;
 use Filament\Forms\Components\Toggle;
 use Filament\Schemas\Components\Section;
+use Filament\Schemas\Components\Utilities\Get;
 use Filament\Schemas\Schema;
 
 class TestQuestionForm
@@ -54,7 +55,11 @@ class TestQuestionForm
                         FileUpload::make('matrix_image_path')
                             ->label('Imagen de la Matriz Principal')
                             ->image()
-                            ->directory('test-images/matrices')
+                            // Misma convención que la base y que la vista del
+                            // candidato: 'matrices/{serie}/{archivo}'. Antes
+                            // subía a 'test-images/matrices', que generaba una
+                            // tercera ruta que nadie leía.
+                            ->directory('matrices')
                             ->imageEditor()
                             ->required()
                             ->imagePreviewHeight('200')
@@ -80,7 +85,12 @@ class TestQuestionForm
                                 FileUpload::make('option_image_path')
                                     ->label('Imagen Opción')
                                     ->image()
-                                    ->directory('test-images/options')
+                                    // Convención de la base:
+                                    // 'options/{serie}/{serie}{pregunta}/{archivo}'.
+                                    ->directory(fn (Get $get): string => self::optionDirectory(
+                                        $get('../../test_series_id'),
+                                        $get('../../question_number'),
+                                    ))
                                     ->imagePreviewHeight('80')
                                     ->required()
                                     ->columnSpan(3),
@@ -118,5 +128,23 @@ class TestQuestionForm
                             ->columnSpan(1),
                     ]),
             ]);
+    }
+
+    /**
+     * Carpeta donde se guardan las imágenes de las opciones de un reactivo.
+     *
+     * Reproduce la convención que ya usan la base y la vista del candidato:
+     * 'options/{codigoSerie}/{codigoSerie}{numeroPregunta}/'.
+     *
+     * Las opciones cuelgan de la pregunta dentro del repeater, así que la serie y
+     * el número se leen del estado del formulario con rutas relativas.
+     */
+    private static function optionDirectory(mixed $seriesId, mixed $questionNumber): string
+    {
+        $serie = $seriesId ? TestSeries::find($seriesId) : null;
+        $codigo = $serie?->code ?? 'X';
+        $numero = $questionNumber ?: '0';
+
+        return "options/{$codigo}/{$codigo}{$numero}";
     }
 }
