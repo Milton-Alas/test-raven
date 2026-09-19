@@ -2,12 +2,13 @@
 
 namespace App\Models;
 
+use App\Models\Concerns\PreservesHistoricalData;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 
 class TestSeries extends Model
 {
-    use HasFactory;
+    use HasFactory, PreservesHistoricalData;
 
     protected $fillable = [
         'code',

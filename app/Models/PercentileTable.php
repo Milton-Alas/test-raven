@@ -2,12 +2,13 @@
 
 namespace App\Models;
 
+use App\Models\Concerns\PreservesHistoricalData;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 
 class PercentileTable extends Model
 {
-    use HasFactory;
+    use HasFactory, PreservesHistoricalData;
 
     protected $fillable = [
         'age_min',
@@ -35,7 +36,7 @@ class PercentileTable extends Model
     public function scopeForAge($query, int $age)
     {
         return $query->where('age_min', '<=', $age)
-                     ->where('age_max', '>=', $age);
+            ->where('age_max', '>=', $age);
     }
 
     public function scopeForScore($query, int $score)

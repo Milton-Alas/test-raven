@@ -158,6 +158,29 @@ class TestResultsTable
                             return null;
                         }
 
+                        // El informe incluye el logo institucional en PNG y DomPDF lo
+                        // incrusta con la extensión GD. Sin ella, el error nativo
+                        // ("The PHP GD extension is required") no dice qué hacer, así
+                        // que se comprueba antes y se explica la solución.
+                        if (! extension_loaded('gd')) {
+                            Log::error('No se puede generar el PDF: falta la extensión GD de PHP.', [
+                                'test_result_id' => $record->getKey(),
+                            ]);
+
+                            Notification::make()
+                                ->danger()
+                                ->title('Falta la extensión GD de PHP')
+                                ->body(
+                                    'El informe incluye el logo en PNG y DomPDF necesita la extensión GD para incrustarlo. '
+                                    .'Instálala con: sudo apt-get install -y php8.4-gd && sudo systemctl restart php8.4-fpm '
+                                    .'(si usas el servidor embebido, basta reiniciar "php artisan serve").'
+                                )
+                                ->persistent()
+                                ->send();
+
+                            return null;
+                        }
+
                         $resultado = $record->load(['candidate', 'testSession']);
 
                         // El candidato puede estar eliminado lógicamente; sin esto
@@ -190,10 +213,19 @@ class TestResultsTable
                                 'error' => $e->getMessage(),
                             ]);
 
+                            // Si la causa es una extensión faltante, se dice cuál: el
+                            // mensaje genérico obliga a mirar el log por algo que el
+                            // usuario del panel puede resolver o reportar.
+                            $causa = str_contains($e->getMessage(), 'GD extension')
+                                ? 'Falta la extensión GD de PHP, necesaria para incrustar el logo del informe. '
+                                    .'Instálala con: sudo apt-get install -y php8.4-gd'
+                                : 'Ocurrió un error al construir el PDF. Revisa los registros del servidor.';
+
                             Notification::make()
                                 ->danger()
                                 ->title('No se pudo generar el informe')
-                                ->body('Ocurrió un error al construir el PDF. Revisa los registros del servidor.')
+                                ->body($causa)
+                                ->persistent()
                                 ->send();
 
                             return null;

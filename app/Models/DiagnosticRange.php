@@ -2,12 +2,13 @@
 
 namespace App\Models;
 
+use App\Models\Concerns\PreservesHistoricalData;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 
 class DiagnosticRange extends Model
 {
-    use HasFactory;
+    use HasFactory, PreservesHistoricalData;
 
     protected $fillable = [
         'percentile_min',
@@ -22,13 +23,14 @@ class DiagnosticRange extends Model
     public function scopeForPercentile($query, int $percentile)
     {
         return $query->where('percentile_min', '<=', $percentile)
-                     ->where('percentile_max', '>=', $percentile);
+            ->where('percentile_max', '>=', $percentile);
     }
 
     // Accessors
     public function getRangeRomanAttribute(): string
     {
         $romans = [1 => 'I', 2 => 'II', 3 => 'III', 4 => 'IV', 5 => 'V'];
+
         return $romans[$this->range_number] ?? '';
     }
 }

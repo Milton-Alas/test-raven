@@ -2,25 +2,30 @@
 
 namespace App\Models;
 
+use App\Models\Concerns\PreservesHistoricalData;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 
 class AnswerOption extends Model
 {
-    use HasFactory;
+    use HasFactory, PreservesHistoricalData;
 
     protected $fillable = [
         'test_question_id',
         'option_number',
-        'text',
-        'is_correct',
+        'option_image_path',
     ];
 
     protected function casts(): array
     {
         return [
-            'is_correct' => 'boolean',
+            'option_number' => 'integer',
         ];
+    }
+
+    public static function historicalDataLabel(): string
+    {
+        return 'opciones de respuesta';
     }
 
     // Relaciones

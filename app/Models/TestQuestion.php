@@ -2,12 +2,13 @@
 
 namespace App\Models;
 
+use App\Models\Concerns\PreservesHistoricalData;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 
 class TestQuestion extends Model
 {
-    use HasFactory;
+    use HasFactory, PreservesHistoricalData;
 
     protected $fillable = [
         'test_series_id',
@@ -45,12 +46,12 @@ class TestQuestion extends Model
     // Accessors
     public function getMatrixImageUrlAttribute(): string
     {
-        return asset('storage/' . $this->matrix_image_path);
+        return asset('storage/'.$this->matrix_image_path);
     }
 
     public function getFullCodeAttribute(): string
     {
-        return $this->series->code . $this->question_number;
+        return $this->series->code.$this->question_number;
     }
 
     // Scopes
@@ -63,5 +64,4 @@ class TestQuestion extends Model
     {
         return $query->orderBy('global_order');
     }
-
 }
