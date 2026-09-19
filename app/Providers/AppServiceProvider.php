@@ -2,6 +2,7 @@
 
 namespace App\Providers;
 
+use App\Support\DuiNitCipher;
 use Illuminate\Cache\RateLimiting\Limit;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\RateLimiter;
@@ -49,7 +50,10 @@ class AppServiceProvider extends ServiceProvider
             return [
                 Limit::perHour(5)->by($request->ip()),
 
-                Limit::perHour(3)->by('dui_nit:'.(string) $request->input('dui_nit')),
+                // RNF-09.01: la clave del limitador se calcula con el mismo índice
+                // seguro que usa la base. Antes se usaba el DUI/NIT en claro, lo que
+                // dejaba el identificador visible en el almacén de caché.
+                Limit::perHour(3)->by('dui_nit:'.(string) DuiNitCipher::hash($request->input('dui_nit'))),
             ];
         });
 

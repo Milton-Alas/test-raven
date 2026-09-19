@@ -3,6 +3,7 @@
 namespace Tests\Feature;
 
 use App\Models\Candidate;
+use App\Support\DuiNitCipher;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Tests\TestCase;
 
@@ -119,7 +120,7 @@ class CandidateRegistrationThrottleTest extends TestCase
                 ->assertRedirect('/register');
         }
 
-        $this->assertSame(1, Candidate::where('dui_nit', $dui)->count());
+        $this->assertSame(1, Candidate::where('dui_nit_hash', DuiNitCipher::hash($dui))->count());
 
         // Cuarto intento con el mismo DUI: se bloquea. La IP solo lleva 4 de 5
         // intentos, así que el bloqueo lo produce el límite del DUI.
@@ -130,7 +131,7 @@ class CandidateRegistrationThrottleTest extends TestCase
         $this->registrarDesde('10.1.0.99', $this->datos(5, $dui))
             ->assertStatus(429);
 
-        $this->assertSame(1, Candidate::where('dui_nit', $dui)->count());
+        $this->assertSame(1, Candidate::where('dui_nit_hash', DuiNitCipher::hash($dui))->count());
     }
 
     public function test_el_intento_bloqueado_conserva_los_datos_del_formulario(): void

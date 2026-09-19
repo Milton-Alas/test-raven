@@ -21,12 +21,17 @@ class RavenTestSeeder extends Seeder
             'E1' => 7, 'E2' => 6, 'E3' => 8, 'E4' => 2, 'E5' => 1, 'E6' => 5, 'E7' => 2, 'E8' => 4, 'E9' => 1, 'E10' => 6, 'E11' => 3, 'E12' => 5,
         ];
 
-        $basePath = public_path('storage/test-images');
-        $matricesPath = $basePath . '/matrices';
-        $optionsPath = $basePath . '/options';
+        // El material de origen vive en storage/app/public/test-images, que es la
+        // ruta versionada en el repositorio. Antes se leía a través de
+        // public/storage (el enlace simbólico de storage:link), así que el seeder
+        // fallaba en cualquier entorno donde el enlace todavía no existiera.
+        $basePath = storage_path('app/public/test-images');
+        $matricesPath = $basePath.'/matrices';
+        $optionsPath = $basePath.'/options';
 
-        if (!File::isDirectory($matricesPath) || !File::isDirectory($optionsPath)) {
-            $this->command?->warn('No se encontró test-images/matrices u options. Seeder cancelado.');
+        if (! File::isDirectory($matricesPath) || ! File::isDirectory($optionsPath)) {
+            $this->command?->warn("No se encontró {$basePath}/matrices u options. Seeder cancelado.");
+
             return;
         }
 
@@ -39,8 +44,8 @@ class RavenTestSeeder extends Seeder
                 ['order' => $order, 'name' => "Serie {$seriesCode}", 'description' => "Serie {$seriesCode}", 'is_active' => true]
             );
 
-            $seriesMatrixDir = $matricesPath . '/' . $seriesCode;
-            if (!File::isDirectory($seriesMatrixDir)) {
+            $seriesMatrixDir = $matricesPath.'/'.$seriesCode;
+            if (! File::isDirectory($seriesMatrixDir)) {
                 continue;
             }
 
@@ -48,6 +53,7 @@ class RavenTestSeeder extends Seeder
             usort($matrixFiles, function ($a, $b) use ($seriesCode) {
                 $aNum = (int) str_replace($seriesCode, '', pathinfo($a->getFilename(), PATHINFO_FILENAME));
                 $bNum = (int) str_replace($seriesCode, '', pathinfo($b->getFilename(), PATHINFO_FILENAME));
+
                 return $aNum <=> $bNum;
             });
 
@@ -57,8 +63,8 @@ class RavenTestSeeder extends Seeder
                 if ($questionNumber <= 0) {
                     continue;
                 }
-                
-                $answerKey = $seriesCode . $questionNumber;
+
+                $answerKey = $seriesCode.$questionNumber;
                 $correctAnswer = $rightAnswers[$answerKey] ?? 1;
 
                 $publicMatrixPath = "matrices/{$seriesCode}/{$filename}";
@@ -77,7 +83,7 @@ class RavenTestSeeder extends Seeder
                     ]
                 );
 
-                if (!$question->wasRecentlyCreated) {
+                if (! $question->wasRecentlyCreated) {
                     $question->update([
                         'global_order' => $question->global_order ?: $globalOrder,
                         'matrix_image_path' => $question->matrix_image_path ?: $publicMatrixPath,
@@ -94,14 +100,14 @@ class RavenTestSeeder extends Seeder
 
     private function seedOptionsForQuestion(string $seriesCode, int $questionNumber, int $questionId, string $optionsPath): void
     {
-        $seriesOptionsDir = $optionsPath . '/' . $seriesCode;
-        if (!File::isDirectory($seriesOptionsDir)) {
+        $seriesOptionsDir = $optionsPath.'/'.$seriesCode;
+        if (! File::isDirectory($seriesOptionsDir)) {
             return;
         }
 
         $pattern = sprintf('%s/%s%d-*.png', $seriesOptionsDir, $seriesCode, $questionNumber);
         $files = glob($pattern);
-        if (!$files) {
+        if (! $files) {
             return;
         }
 
@@ -135,7 +141,7 @@ class RavenTestSeeder extends Seeder
     {
         $disk = Storage::disk('public');
         $directory = dirname($to);
-        if (!$disk->exists($directory)) {
+        if (! $disk->exists($directory)) {
             $disk->makeDirectory($directory);
         }
         $disk->put($to, File::get($from));

@@ -3,13 +3,13 @@
 namespace App\Http\Controllers;
 
 use App\Models\Candidate;
+use Illuminate\Auth\Events\Registered;
+use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\Hash;
-use Illuminate\Http\RedirectResponse;
 use Illuminate\Validation\ValidationException;
 use Illuminate\View\View;
-use Illuminate\Auth\Events\Registered;
 
 class CandidateAuthController extends Controller
 {
@@ -33,8 +33,29 @@ class CandidateAuthController extends Controller
 
         // Determina si el login es un email o DUI/NIT
         $isEmail = filter_var($request->login, FILTER_VALIDATE_EMAIL);
+
+        // RNF-09.01: el DUI/NIT se guarda cifrado, así que no se puede comparar
+        // contra la columna. Se resuelve el candidato por su índice seguro
+        // (HMAC) y la contraseña se verifica contra el hash almacenado.
+        if (! $isEmail) {
+            $candidate = Candidate::findByDuiNit($request->login);
+
+            if (! $candidate
+                || ! $candidate->is_active
+                || ! Hash::check($request->password, $candidate->password)) {
+                throw ValidationException::withMessages([
+                    'login' => [trans('auth.failed')],
+                ]);
+            }
+
+            Auth::guard('candidate')->login($candidate, $request->boolean('remember'));
+            $request->session()->regenerate();
+
+            return redirect()->intended('/instrucciones');
+        }
+
         $credentials = [
-            $isEmail ? 'email' : 'dui_nit' => $request->login,
+            'email' => $request->login,
             'password' => $request->password,
             'is_active' => true, // Solo permitir login a candidatos activos
         ];
@@ -80,12 +101,22 @@ class CandidateAuthController extends Controller
         $request->validate([
             'name' => ['required', 'string', 'max:255'],
             'email' => ['required', 'string', 'email', 'max:255', 'unique:candidates'],
-            'dui_nit' => ['required', 'string', 'max:255', 'unique:candidates'],
+            'dui_nit' => ['required', 'string', 'max:255'],
             'password' => ['required', 'string', 'min:8', 'confirmed'],
             'age' => ['required', 'integer', 'min:1'],
             'occupation' => ['required', 'string', 'max:255'],
             'education_level' => ['required', 'string', 'max:255'],
         ]);
+
+        // RNF-09.01: el DUI/NIT se guarda cifrado, así que la unicidad no puede
+        // validarse contra la columna (dos cifrados del mismo valor difieren).
+        // Se comprueba contra el índice seguro, que es determinista y permite
+        // detectar el duplicado sin descifrar nada.
+        if (Candidate::findByDuiNit($request->input('dui_nit'))) {
+            throw ValidationException::withMessages([
+                'dui_nit' => ['El campo dui nit ya ha sido registrado.'],
+            ]);
+        }
 
         $candidate = Candidate::create([
             'name' => $request->name,
