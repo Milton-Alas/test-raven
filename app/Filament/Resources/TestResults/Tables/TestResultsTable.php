@@ -23,6 +23,7 @@ use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\Log;
 use pxlrbt\FilamentExcel\Actions\Tables\ExportAction;
 use pxlrbt\FilamentExcel\Exports\ExcelExport;
+use pxlrbt\FilamentExcel\Exports\Exporter;
 
 class TestResultsTable
 {
@@ -103,24 +104,42 @@ class TestResultsTable
                     ->placeholder('Todos')
                     ->native(false),
             ])
+
             ->headerActions([
-                ExportAction::make('exportar')
-                    ->label('Exportar resultados')
-                    ->icon('heroicon-o-arrow-down-tray')
+                ExportAction::make('exportar_excel')
+                    ->label('Exportar a Excel')
+                    ->icon('heroicon-o-table-cells')
                     ->color('success')
                     ->exports([
                         ExcelExport::make('excel')
-                            ->label('Exportar a Excel')
                             ->fromTable()
                             ->withFilename('resultados-'.now()->format('Y-m-d')),
+                    ])
+                    ->after(function (ExportAction $action): void {
+                        self::registrarExportacionMasiva(
+                            $action,
+                            'xlsx'
+                        );
+                    }),
 
+                ExportAction::make('exportar_csv')
+                    ->label('Exportar a CSV')
+                    ->icon('heroicon-o-document-arrow-down')
+                    ->color('gray')
+                    ->exports([
                         ExcelExport::make('csv')
-                            ->label('Exportar a CSV')
                             ->fromTable()
                             ->withWriterType(\Maatwebsite\Excel\Excel::CSV)
                             ->withFilename('resultados-'.now()->format('Y-m-d')),
-                    ]),
+                    ])
+                    ->after(function (ExportAction $action): void {
+                        self::registrarExportacionMasiva(
+                            $action,
+                            'csv'
+                        );
+                    }),
             ])
+             
             ->recordActions([
                 ViewAction::make(),
                 Action::make('pdf')
@@ -221,5 +240,40 @@ class TestResultsTable
                     RestoreBulkAction::make(),
                 ]),
             ]);
+    }
+    private static function registrarExportacionMasiva(
+        ExportAction $action,
+        string $format
+    ): void {
+        $admin = Auth::user();
+
+        if (! $admin) {
+            return;
+        }
+
+        $filename = 'resultados-'.now()->format('Y-m-d').'.'.$format;
+        $downloadedAt = now()->toDateTimeString();
+
+        $resultado = $action
+            ->getLivewire()
+            ->getFilteredTableQuery()
+            ->first();
+
+        if (! $resultado) {
+            return;
+        }
+
+        app(ActivityLogService::class)->logExport(
+            causer: $admin,
+            subject: $resultado,
+            format: $format,
+            filename: $filename,
+            description: "Exportación {$format} descargada por {$admin->name}.",
+            properties: [
+                'filename' => $filename,
+                'downloaded_by' => $admin->name,
+                'downloaded_at' => $downloadedAt,
+            ],
+        );
     }
 }
