@@ -62,6 +62,16 @@ class CandidateResource extends Resource
         return Auth::user()?->role === 'admin';
     }
 
+    public static function canForceDeleteAny(): bool
+    {
+        return Auth::user()?->role === 'admin';
+    }
+
+    public static function canRestoreAny(): bool
+    {
+        return Auth::user()?->role === 'admin';
+    }
+
     public static function form(Schema $schema): Schema
     {
         return CandidateForm::configure($schema);

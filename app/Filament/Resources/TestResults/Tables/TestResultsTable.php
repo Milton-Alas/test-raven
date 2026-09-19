@@ -196,9 +196,9 @@ class TestResultsTable
             ])
             ->toolbarActions([
                 BulkActionGroup::make([
-                    DeleteBulkAction::make(),
-                    ForceDeleteBulkAction::make(),
-                    RestoreBulkAction::make(),
+                    DeleteBulkAction::make()->authorize(fn () => \Illuminate\Support\Facades\Gate::allows('deleteAny', TestResult::class)),
+                    ForceDeleteBulkAction::make()->authorize(fn () => \Illuminate\Support\Facades\Gate::allows('forceDeleteAny', TestResult::class)),
+                    RestoreBulkAction::make()->authorize(fn () => \Illuminate\Support\Facades\Gate::allows('restoreAny', TestResult::class)),
                 ]),
             ]);
     }

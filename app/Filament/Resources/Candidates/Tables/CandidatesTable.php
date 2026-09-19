@@ -3,6 +3,7 @@
 namespace App\Filament\Resources\Candidates\Tables;
 
 use App\Filament\Resources\Candidates\Actions\ResetCandidatePasswordAction;
+use App\Models\Candidate;
 use App\Services\ActivityLogService;
 use Filament\Actions\BulkAction;
 use Filament\Actions\BulkActionGroup;
@@ -11,6 +12,7 @@ use Filament\Actions\EditAction;
 use Filament\Actions\ForceDeleteBulkAction;
 use Filament\Actions\RestoreBulkAction;
 use Filament\Actions\ViewAction;
+use Illuminate\Support\Facades\Gate;
 use Filament\Tables\Columns\IconColumn;
 use Filament\Tables\Columns\TextColumn;
 use Filament\Tables\Filters\TernaryFilter;
@@ -106,11 +108,11 @@ class CandidatesTable
             ])
             ->toolbarActions([
                 BulkActionGroup::make([
-                    DeleteBulkAction::make(),
-                    ForceDeleteBulkAction::make(),
-                    RestoreBulkAction::make(),
+                    DeleteBulkAction::make()->authorize(fn () => \Illuminate\Support\Facades\Gate::allows('deleteAny', Candidate::class)),
+                    ForceDeleteBulkAction::make()->authorize(fn () => \Illuminate\Support\Facades\Gate::allows('forceDeleteAny', Candidate::class)),
+                    RestoreBulkAction::make()->authorize(fn () => \Illuminate\Support\Facades\Gate::allows('restoreAny', Candidate::class)),
                     BulkAction::make('export')
-                        ->label('Exportar Seleccionados')
+                        ->label('Exportar Seleccionados')       
                         ->icon('heroicon-o-arrow-down-tray')
                         ->color('success')
                         ->action(function (EloquentCollection $records): StreamedResponse {
@@ -163,9 +165,9 @@ class CandidatesTable
             'Edad',
             'Activo',
             'Test completado',
-            'Percentil',
-            'Diagnostico',
-            'Puntaje total',
+                            DeleteBulkAction::make()->authorize(fn () => Auth::user()?->can('deleteAny', Candidate::class)),
+                            ForceDeleteBulkAction::make()->authorize(fn () => Auth::user()?->can('forceDeleteAny', Candidate::class)),
+                            RestoreBulkAction::make()->authorize(fn () => Auth::user()?->can('restoreAny', Candidate::class)),
             'Fecha finalizacion test',
         ];
 

@@ -64,6 +64,16 @@ class TestSessionResource extends Resource
         return false;
     }
 
+    public static function canForceDeleteAny(): bool
+    {
+        return false;
+    }
+
+    public static function canRestoreAny(): bool
+    {
+        return false;
+    }
+
     public static function form(Schema $schema): Schema
     {
         return TestSessionForm::configure($schema);
