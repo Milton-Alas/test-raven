@@ -19,6 +19,23 @@ class DiagnosticRange extends Model
         'interpretation',
     ];
 
+    /**
+     * La tabla de rangos diagnósticos no tiene columna `is_active`, así que no hay
+     * ningún campo que se pueda modificar sin alterar la interpretación de
+     * resultados ya emitidos: el registro es completamente inmutable.
+     *
+     * @return array<int, string>
+     */
+    public static function historicalDataMutableAttributes(): array
+    {
+        return [];
+    }
+
+    public static function historicalDataLabel(): string
+    {
+        return 'rangos diagnósticos';
+    }
+
     // Scopes
     public function scopeForPercentile($query, int $percentile)
     {

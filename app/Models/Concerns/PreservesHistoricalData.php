@@ -4,7 +4,6 @@ namespace App\Models\Concerns;
 
 use App\Exceptions\HistoricalDataException;
 use App\Models\TestSession;
-use Illuminate\Support\Facades\Schema;
 
 /**
  * Protege el contenido del test que ya forma parte de resultados emitidos.
@@ -32,7 +31,10 @@ trait PreservesHistoricalData
     /**
      * Atributos que sí pueden modificarse después de la creación.
      *
-     * El modelo que use el trait puede sobreescribir este método.
+     * Por defecto solo `is_active`: permite retirar un ítem del instrumento sin
+     * destruir la historia. Un modelo se sobreescribe cuando su tabla no tiene esa
+     * columna y no puede ofrecer ninguna alternativa, en cuyo caso el registro
+     * queda completamente inmutable a propósito.
      *
      * @return array<int, string>
      */
@@ -76,26 +78,9 @@ trait PreservesHistoricalData
         });
 
         static::creating(function (): void {
-            if (static::hasTestInProgress()) {
+            if (TestSession::hayTestEnCurso()) {
                 throw HistoricalDataException::creationBlocked(static::historicalDataLabel());
             }
         });
-    }
-
-    /**
-     * ¿Hay alguna sesión de test en curso ahora mismo?
-     *
-     * Si la tabla no existe (por ejemplo durante una migración) no se bloquea
-     * nada: la protección aplica al uso normal, no a la construcción del esquema.
-     */
-    public static function hasTestInProgress(): bool
-    {
-        if (! Schema::hasTable('test_sessions')) {
-            return false;
-        }
-
-        return TestSession::query()
-            ->whereIn('status', ['not_started', 'in_progress', 'paused'])
-            ->exists();
     }
 }

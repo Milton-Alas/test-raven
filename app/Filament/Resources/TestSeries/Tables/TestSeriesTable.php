@@ -2,19 +2,12 @@
 
 namespace App\Filament\Resources\TestSeries\Tables;
 
-use Filament\Actions\BulkActionGroup;
-use Filament\Actions\DeleteBulkAction;
 use Filament\Actions\EditAction;
-use Filament\Tables\Table;
+use Filament\Actions\ViewAction;
 use Filament\Tables\Columns\IconColumn;
 use Filament\Tables\Columns\TextColumn;
-use Illuminate\Database\Eloquent\Builder;
-use App\Models\TestSeries;
-use Illuminate\Support\Facades\Auth;
-use Filament\Tables\Filters\SelectFilter;
 use Filament\Tables\Filters\TernaryFilter;
-use Filament\Actions\DeleteAction;
-use Filament\Actions\ViewAction;
+use Filament\Tables\Table;
 
 class TestSeriesTable
 {
@@ -66,21 +59,18 @@ class TestSeriesTable
             ->defaultSort('order', 'asc')
             ->filters([
                 TernaryFilter::make('is_active')
-                ->label('Estado de Serie')
-                ->placeholder('Todas')
-                ->trueLabel('Solo Activas')
-                ->falseLabel('Solo Inactivas')
-                ->native(false),
+                    ->label('Estado de Serie')
+                    ->placeholder('Todas')
+                    ->trueLabel('Solo Activas')
+                    ->falseLabel('Solo Inactivas')
+                    ->native(false),
             ])
             ->recordActions([
                 EditAction::make(),
                 ViewAction::make(),
-                DeleteAction::make(),
             ])
             ->toolbarActions([
-                BulkActionGroup::make([
-                    DeleteBulkAction::make(),
-                ]),
+                // Sin acciones destructivas: el modelo las prohíbe.
             ]);
     }
 }

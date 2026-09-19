@@ -2,19 +2,11 @@
 
 namespace App\Filament\Resources\DiagnosticRanges\Tables;
 
-use Filament\Actions\BulkActionGroup;
-use Filament\Actions\DeleteBulkAction;
-use Filament\Actions\EditAction;
-use Filament\Tables\Table;
-use Filament\Tables\Columns\IconColumn;
-use Filament\Tables\Columns\TextColumn;
-use Illuminate\Database\Eloquent\Builder;
 use App\Models\DiagnosticRange;
-use Illuminate\Support\Facades\Auth;
-use Filament\Tables\Filters\SelectFilter;
-use Filament\Tables\Filters\TernaryFilter;
-use Filament\Actions\DeleteAction;
+use Filament\Actions\EditAction;
 use Filament\Actions\ViewAction;
+use Filament\Tables\Columns\TextColumn;
+use Filament\Tables\Table;
 
 class DiagnosticRangesTable
 {
@@ -23,26 +15,25 @@ class DiagnosticRangesTable
         return $table
             ->columns([
                 TextColumn::make('range_number')
-                ->label('Rango')
-                ->formatStateUsing(fn ($state) => match ($state) {
-                    1 => 'I', 2 => 'II', 3 => 'III', 4 => 'IV', 5 => 'V',
-                    default => $state
-                })
-                ->badge()
-                ->color(fn ($state): string => match ($state) {
-                    1 => 'success',
-                    2 => 'info',
-                    3 => 'warning',
-                    4, 5 => 'danger',
-                    default => 'gray',
-                })
-                ->sortable()
-                ->alignCenter(),
+                    ->label('Rango')
+                    ->formatStateUsing(fn ($state) => match ($state) {
+                        1 => 'I', 2 => 'II', 3 => 'III', 4 => 'IV', 5 => 'V',
+                        default => $state
+                    })
+                    ->badge()
+                    ->color(fn ($state): string => match ($state) {
+                        1 => 'success',
+                        2 => 'info',
+                        3 => 'warning',
+                        4, 5 => 'danger',
+                        default => 'gray',
+                    })
+                    ->sortable()
+                    ->alignCenter(),
 
                 TextColumn::make('percentile_range')
                     ->label('Percentiles')
-                    ->state(fn (DiagnosticRange $record): string => 
-                        "{$record->percentile_min}% - {$record->percentile_max}%"
+                    ->state(fn (DiagnosticRange $record): string => "{$record->percentile_min}% - {$record->percentile_max}%"
                     )
                     ->icon('heroicon-m-variable')
                     ->color('gray')
@@ -64,19 +55,16 @@ class DiagnosticRangesTable
                     ->dateTime('d/m/Y')
                     ->toggleable(isToggledHiddenByDefault: true),
             ])
-            ->defaultSort('range_number', 'asc')    
+            ->defaultSort('range_number', 'asc')
             ->filters([
                 //
             ])
             ->recordActions([
                 EditAction::make(),
                 ViewAction::make(),
-                DeleteAction::make(),
             ])
             ->toolbarActions([
-                BulkActionGroup::make([
-                    DeleteBulkAction::make(),
-                ]),
+                // Sin acciones destructivas: el modelo las prohíbe.
             ]);
     }
 }

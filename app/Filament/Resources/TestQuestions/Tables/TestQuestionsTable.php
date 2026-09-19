@@ -2,16 +2,12 @@
 
 namespace App\Filament\Resources\TestQuestions\Tables;
 
-use Filament\Actions\BulkActionGroup;
-use Filament\Actions\DeleteBulkAction;
 use Filament\Actions\EditAction;
-use Filament\Tables\Table;
 use Filament\Tables\Columns\IconColumn;
 use Filament\Tables\Columns\ImageColumn;
 use Filament\Tables\Columns\TextColumn;
 use Filament\Tables\Filters\SelectFilter;
-use Filament\Tables\Filters\TernaryFilter;
-use Filament\Actions\DeleteAction;
+use Filament\Tables\Table;
 
 class TestQuestionsTable
 {
@@ -20,10 +16,10 @@ class TestQuestionsTable
         return $table
             ->columns([
                 TextColumn::make('global_order')
-                ->label('№')
-                ->sortable()
-                ->weight('bold')
-                ->alignCenter(),
+                    ->label('№')
+                    ->sortable()
+                    ->weight('bold')
+                    ->alignCenter(),
 
                 TextColumn::make('series.code')
                     ->label('Serie')
@@ -41,30 +37,30 @@ class TestQuestionsTable
                     ->square()
                     ->size(50)
                     ->extraImgAttributes(['class' => 'rounded shadow-sm']),*/
-                    ImageColumn::make('matrix_image_path')
+                ImageColumn::make('matrix_image_path')
                     ->label('Matriz')
                     ->disk('public')
                     ->state(fn ($record) => $record->matrix_image_path ? "test-images/{$record->matrix_image_path}" : null)
                     ->square()
                     ->size(60)
-                    ->extraImgAttributes(['class' => 'rounded shadow-sm border border-gray-200']),   
+                    ->extraImgAttributes(['class' => 'rounded shadow-sm border border-gray-200']),
                 /*TextColumn::make('options_count')
                     ->label('Opciones')
                     //->counts('options') // Asumiendo que la relación es 'options'
                     ->badge()
                     ->color(fn ($state): string => $state < 4 ? 'danger' : 'gray')
                     ->alignCenter(),*/
-                  /*  TextColumn::make('answer_options_count')
+                /*  TextColumn::make('answer_options_count')
                     ->label('Opciones')
                     ->counts('answerOptions')
                     ->badge()
-                    ->color(fn ($state, $record): string => 
+                    ->color(fn ($state, $record): string =>
                         // Lógica inteligente: Series A,B deben tener 6. C,D,E deben tener 8.
-                        in_array($record->series->code, ['A', 'B']) 
+                        in_array($record->series->code, ['A', 'B'])
                             ? ($state === 6 ? 'success' : 'danger')
                             : ($state === 8 ? 'success' : 'danger')
                     )
-                    ->description(fn ($record): string => 
+                    ->description(fn ($record): string =>
                         in_array($record->series->code, ['A', 'B']) ? 'Req: 6' : 'Req: 8'
                     )
                     ->alignCenter(),*/
@@ -83,18 +79,17 @@ class TestQuestionsTable
             ->defaultSort('global_order', 'asc')
             ->filters([
                 SelectFilter::make('test_series_id')
-                ->label('Filtrar por Serie')
-                ->relationship('series', 'name')
-                ->native(false),
+                    ->label('Filtrar por Serie')
+                    ->relationship('series', 'name')
+                    ->native(false),
             ])
             ->recordActions([
+                // Solo edición: el borrado está prohibido en el modelo porque
+                // arrastraría en cascada las respuestas de los candidatos.
                 EditAction::make(),
-                DeleteAction::make(),
             ])
             ->toolbarActions([
-                BulkActionGroup::make([
-                    DeleteBulkAction::make(),
-                ]),
+                // Sin acciones masivas: no hay nada destructivo que ofrecer.
             ]);
     }
 }

@@ -5,6 +5,7 @@ namespace App\Models;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\SoftDeletes;
+use Illuminate\Support\Facades\Schema;
 
 class TestSession extends Model
 {
@@ -76,6 +77,7 @@ class TestSession extends Model
     {
         $totalQuestions = 60;
         $answeredQuestions = $this->testAnswers()->count();
+
         return ($answeredQuestions / $totalQuestions) * 100;
     }
 
@@ -88,5 +90,30 @@ class TestSession extends Model
     public function scopeCompleted($query)
     {
         return $query->whereIn('status', ['completed', 'timeout']);
+    }
+
+    /**
+     * Estados en los que el candidato todavía puede estar respondiendo.
+     *
+     * @var array<int, string>
+     */
+    public const ESTADOS_EN_CURSO = ['not_started', 'in_progress', 'paused'];
+
+    /**
+     * ¿Hay algún test en curso ahora mismo?
+     *
+     * Se usa para impedir que se cargue o modifique contenido del instrumento
+     * mientras alguien lo está respondiendo: ese candidato vería un test distinto
+     * a mitad de la prueba.
+     */
+    public static function hayTestEnCurso(): bool
+    {
+        // Sin tabla (por ejemplo durante una migración) no se bloquea nada: la
+        // protección aplica al uso normal, no a la construcción del esquema.
+        if (! Schema::hasTable('test_sessions')) {
+            return false;
+        }
+
+        return static::query()->whereIn('status', self::ESTADOS_EN_CURSO)->exists();
     }
 }

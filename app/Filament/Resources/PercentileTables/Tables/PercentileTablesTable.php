@@ -2,19 +2,12 @@
 
 namespace App\Filament\Resources\PercentileTables\Tables;
 
-use Filament\Actions\BulkActionGroup;
-use Filament\Actions\DeleteBulkAction;
+use App\Models\PercentileTable;
 use Filament\Actions\EditAction;
-use Filament\Tables\Table;
 use Filament\Tables\Columns\IconColumn;
 use Filament\Tables\Columns\TextColumn;
-use Illuminate\Database\Eloquent\Builder;
-use App\Models\PercentileTable;
-use Filament\Actions\DeleteAction;
-use Illuminate\Support\Facades\Auth;
-use Filament\Tables\Filters\SelectFilter;
 use Filament\Tables\Filters\TernaryFilter;
-
+use Filament\Tables\Table;
 
 class PercentileTablesTable
 {
@@ -23,11 +16,11 @@ class PercentileTablesTable
         return $table
             ->columns([
                 TextColumn::make('age_range')
-                ->label('Rango de Edad')
-                ->state(fn (PercentileTable $record): string => "{$record->age_min} - {$record->age_max} años")
-                ->icon('heroicon-m-identification')
-                ->color('gray')
-                ->sortable(['age_min']),
+                    ->label('Rango de Edad')
+                    ->state(fn (PercentileTable $record): string => "{$record->age_min} - {$record->age_max} años")
+                    ->icon('heroicon-m-identification')
+                    ->color('gray')
+                    ->sortable(['age_min']),
 
                 TextColumn::make('raw_score')
                     ->label('Puntaje Bruto')
@@ -65,18 +58,15 @@ class PercentileTablesTable
             ->defaultPaginationPageOption(50)
             ->filters([
                 TernaryFilter::make('is_active')
-                ->label('Estado de Baremo')
-                ->placeholder('Todos')
-                ->native(false),
+                    ->label('Estado de Baremo')
+                    ->placeholder('Todos')
+                    ->native(false),
             ])
             ->recordActions([
                 EditAction::make(),
-                DeleteAction::make(),
             ])
             ->toolbarActions([
-                BulkActionGroup::make([
-                    DeleteBulkAction::make(),
-                ]),
+                // Sin acciones destructivas: el modelo las prohíbe.
             ]);
     }
 }

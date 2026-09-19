@@ -28,6 +28,21 @@ class TestResultPdfExportTest extends TestCase
 {
     use RefreshDatabase;
 
+    protected function setUp(): void
+    {
+        parent::setUp();
+
+        // DomPDF incrusta el logo del informe en PNG y para eso necesita la
+        // extensión GD. Sin ella no hay nada que probar aquí: la aplicación ya
+        // avisa de forma explícita en el panel ("Falta la extensión GD de PHP").
+        if (! extension_loaded('gd')) {
+            $this->markTestSkipped(
+                'La extensión GD de PHP es necesaria para generar el PDF (logo en PNG). '
+                .'Instálala con: sudo apt-get install -y php8.4-gd'
+            );
+        }
+    }
+
     private function admin(): User
     {
         return User::create([
