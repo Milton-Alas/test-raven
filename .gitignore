@@ -39,6 +39,9 @@
 /.npm-cache/
 /.npm/
 
+# Respaldos locales (contienen la clave de cifrado y volcados de la base)
+/storage/backups/
+
 # Otros
 .phpunit.result.cache
 Homestead.json
