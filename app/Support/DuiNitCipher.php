@@ -107,6 +107,52 @@ class DuiNitCipher
     }
 
     /**
+     * Tipo de documento que corresponde al valor, según su formato.
+     *
+     * Tras la homologación (Decreto Legislativo 203 de 2021) el DUI sustituye al
+     * NIT para las personas naturales salvadoreñas mayores de edad, de modo que
+     * cada persona tiene un solo número de identificación vigente. Por eso el tipo
+     * no se almacena en una columna aparte: se deduce de la longitud del valor
+     * normalizado, y así un único campo sigue garantizando que nadie se registre
+     * dos veces (una con DUI y otra con NIT).
+     *
+     *   - 9 dígitos  → 'dui'  (formato 00000000-0)
+     *   - 14 dígitos → 'nit'  (formato 0000-000000-000-0)
+     *
+     * Devuelve null si el valor no corresponde a ninguno de los dos formatos.
+     * La comprobación exige que el valor normalizado sean **solo dígitos**: sin
+     * eso, una cadena de nueve letras pasaría como DUI, porque la normalización
+     * conserva letras (y debe hacerlo, para los NIT de personas jurídicas, que
+     * pueden incorporarlas).
+     */
+    public static function documentType(?string $valor): ?string
+    {
+        $normalizado = self::normalize($valor);
+
+        if ($normalizado === null || ! ctype_digit($normalizado)) {
+            return null;
+        }
+
+        return match (strlen($normalizado)) {
+            9 => 'dui',
+            14 => 'nit',
+            default => null,
+        };
+    }
+
+    /**
+     * Etiqueta legible del tipo de documento, para mensajes e informes.
+     */
+    public static function documentTypeLabel(?string $valor): ?string
+    {
+        return match (self::documentType($valor)) {
+            'dui' => 'DUI',
+            'nit' => 'NIT',
+            default => null,
+        };
+    }
+
+    /**
      * Enmascara el identificador para mostrarlo en listados.
      *
      * El panel necesita poder identificar al candidato sin exponer el DUI

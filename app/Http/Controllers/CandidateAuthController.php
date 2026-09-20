@@ -3,6 +3,7 @@
 namespace App\Http\Controllers;
 
 use App\Models\Candidate;
+use App\Support\DuiNitCipher;
 use Illuminate\Auth\Events\Registered;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
@@ -98,10 +99,30 @@ class CandidateAuthController extends Controller
      */
     public function storeRegister(Request $request): RedirectResponse
     {
+        // Simple anti-bot honeypot: the hidden `website` field must be empty.
+        if ($request->filled('website')) {
+            return back()->withErrors(['throttle' => 'Registro bloqueado: comportamiento sospechoso detectado.'])->withInput();
+        }
+
         $request->validate([
             'name' => ['required', 'string', 'max:255'],
             'email' => ['required', 'string', 'email', 'max:255', 'unique:candidates'],
-            'dui_nit' => ['required', 'string', 'max:255'],
+            // Validación por formato sobre un único campo (ver
+            // DuiNitCipher::documentType): 9 dígitos si es DUI, 14 si es NIT. No se
+            // exige elegir el tipo: se deduce de la longitud del valor normalizado,
+            // porque tras la homologación (D.L. 203/2021) cada persona tiene un solo
+            // número de identificación vigente.
+            'dui_nit' => [
+                'required', 'string', 'max:255',
+                function (string $attribute, mixed $value, \Closure $fail): void {
+                    if (DuiNitCipher::documentType($value) === null) {
+                        $fail(
+                            'El DUI o NIT no tiene un formato válido: 9 dígitos si es DUI '
+                            .'(por ejemplo 05123456-7) o 14 si es NIT (por ejemplo 0614-120387-101-2).'
+                        );
+                    }
+                },
+            ],
             'password' => ['required', 'string', 'min:8', 'confirmed'],
             'age' => ['required', 'integer', 'min:1'],
             'occupation' => ['required', 'string', 'max:255'],

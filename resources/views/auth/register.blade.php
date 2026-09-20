@@ -64,6 +64,12 @@
                     <form method="POST" action="{{ route('register') }}">
                         @csrf
 
+                        {{-- Honeypot anti-bot: campo oculto que debe quedar vacío. --}}
+                        <div style="display:none;" aria-hidden="true">
+                            <label for="website">Website</label>
+                            <input id="website" type="text" name="website" value="">
+                        </div>
+
                         <div class="section-divider">
                             <h2 class="h5 fw-bold mb-4 text-dark">Información Personal</h2>
                             
