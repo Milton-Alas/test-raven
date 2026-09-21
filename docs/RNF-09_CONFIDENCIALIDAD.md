@@ -259,6 +259,12 @@ zonas grises ante una auditoría:
   Requiere el planificador activo en el servidor:
   `* * * * * cd /ruta && php artisan schedule:run >> /dev/null 2>&1`
 - **Ejecución manual:** `php artisan retention:apply` con `--categoria=`, `--dry-run` y `--force`.
+- **Nombre y evidencia (pendiente si el criterio de aceptación es literal):** el requisito se formuló
+  también como un comando `raven:purge-expired` que registrara la ejecución en `activity_logs` con el
+  evento `retention_purge`. **Ninguno de los dos existe.** La funcionalidad está cubierta por
+  `retention:apply` y la evidencia de cada ejecución es `retention_logs`, que queda fuera de la propia
+  política (los `activity_logs` de la categoría `actividad` sí se suprimen, así que un evento ahí sería
+  más efímero como prueba).
 - **Registro de las operaciones:** tabla `retention_logs`, con una fila por categoría y ejecución:
 
   | Campo | Contenido |
@@ -266,7 +272,7 @@ zonas grises ante una auditoría:
   | `categoria`, `accion` | Qué política se aplicó |
   | `dias_retencion`, `fecha_corte` | Bajo qué plazo y con qué fecha de corte |
   | `registros_afectados`, `detalle` | Alcance real de la operación |
-  | `origen` | `schedule` (automático) o `manual` |
+  | `origen` | Cómo se ejecutó. Hoy el comando registra siempre `manual`, también cuando lo dispara el planificador (desviación conocida) |
   | `simulacion` | Si fue una ejecución sin efectos |
   | `resultado`, `error`, `duracion_ms` | Resultado y diagnóstico |
 

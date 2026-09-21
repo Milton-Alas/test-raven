@@ -563,8 +563,6 @@ npm install && npm run build
 php artisan migrate --seed
 php artisan storage:link
 php artisan filament:install --panels
-php artisan shield:install --fresh
-php artisan shield:generate --all
 
 # Usuario admin inicial
 php artisan tinker

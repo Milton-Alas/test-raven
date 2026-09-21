@@ -1,5 +1,11 @@
 # Plan Simplificado - Panel Admin de Resultados con Filament v4
 
+> **Estado (cierre del proyecto):** este documento es el plan de diseño con el que se construyó el
+> panel, no su descripción final. Entre otras diferencias, la autorización se resolvió con el rol en
+> `users.role` (`admin`, `reporter`, `evaluador`) y los métodos `canX()` de cada recurso de Filament:
+> **no se instalaron `spatie/laravel-permission` ni Filament Shield**, así que los pasos de instalación
+> de esos paquetes no aplican. La descripción del panel tal como quedó está en el `README.md`.
+
 ## 1. Objetivo
 
 Implementar un panel administrativo simple y robusto para que un usuario con rol `admin` pueda:

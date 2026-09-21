@@ -178,7 +178,7 @@ _Estados utilizados: Solventado | Solventado en código | A cargo de la UTI | Ri
 - *Hallazgo:* No existe autoservicio. El administrador genera o define una contraseña temporal, que se
   muestra *una sola vez* y no puede consultarse después. La acción *no* modifica `test_completed`: no
   otorga un segundo intento.
-- *Sobre `candidate_dui_nit` en el registro de auditoría* #verificar[coherencia con el cifrado]:
+- *Sobre `candidate_dui_nit` en el registro de auditoría:*
   el servicio escribe el valor *en claro* en `properties.candidate_dui_nit`, porque lee el atributo
   del modelo, que descifra de forma transparente. Esto no contradice el cifrado en reposo (los
   registros de auditoría son otra tabla, con su propia política de retención de 365 días), pero
@@ -425,18 +425,30 @@ _Estados utilizados: Solventado | Solventado en código | A cargo de la UTI | Ri
     tiempo si la institución quiere análisis comparativo por cohortes.
   - Los registros de actividad, IP y datos técnicos son los de menor valor analítico y deben tener los
     plazos más cortos.
-  - *Desde qué fecha se cuenta el plazo* #verificar[qué fecha usa hoy `retention:apply`]: hoy la
-    política se calcula sobre `created_at` del propio registro. Para la categoría `personal` eso es la
-    fecha de alta del candidato; para `actividad` y `tecnico`, la del propio registro; y para los
-    resultados, la de su cálculo. *Es una diferencia real frente a la recomendación de contar desde la
-    finalización del test o el cierre de la convocatoria.* Si la facultad lo requiere, el cambio se
-    limita a la consulta de `RetentionService::disociarCandidatos()` para usar `test_completed_at`
-    cuando exista. Esfuerzo bajo.
+  - *Desde qué fecha se cuenta el plazo:* la política se calcula sobre `created_at` del propio registro
+    (verificado en `RetentionService`: `candidates` para `personal`, `test_results` y `candidates` para
+    `psicometrico`, `activity_logs` para `actividad`, y `test_sessions` y `activity_logs` para
+    `tecnico`). Para la categoría `personal` eso es la fecha de alta del candidato y para los resultados
+    la de su cálculo. *Es una diferencia real frente a la recomendación de contar desde la finalización
+    del test o el cierre de la convocatoria.* Si la facultad lo requiere, el cambio se limita a la
+    consulta de `RetentionService::disociarCandidatos()` para usar `test_completed_at` cuando exista.
+    Esfuerzo bajo.
 - *Aplicación automática:* `php artisan retention:apply` (admite `--dry-run`, que recorre la misma
   lógica sin escribir y deja constancia en `retention_logs` con `simulacion = true`). La tarea está
   programada a diario a las 03:00 en `routes/console.php`, con `withoutOverlapping()` y `onOneServer()`.
   Respeta el interruptor `RETENCION_ACTIVA`. Requiere el planificador de Laravel activo en el servidor
   (ver `docs/RESPALDO_Y_OPERACION.md`).
+- *Pendiente de implementación (nombre y evidencia):* el requisito se formuló también como un comando
+  `raven:purge-expired` que registrara su ejecución en `activity_logs` con el evento `retention_purge`.
+  **No existe ninguno de los dos.** La funcionalidad —aplicar la política, `--dry-run` y ejecución
+  programada— está cubierta por `retention:apply`, y su evidencia vive en `retention_logs` (una fila por
+  categoría y ejecución), que además queda fuera de la propia política. Si el criterio de aceptación
+  exige el nombre y el evento literales, el alias del comando son unas pocas líneas y el evento se
+  escribe con `ActivityLogService::log()`; la salvedad es que la política suprime los `activity_logs`
+  vencidos (categoría `actividad`), así que esa evidencia sería más efímera que `retention_logs`.
+  Dos detalles menores, verificados en el código: la hora de ejecución está fija en
+  `routes/console.php` (03:00, no configurable por entorno) y `retention_logs.origen` registra siempre
+  `manual`, también cuando lo dispara el planificador.
 - *Cambio de plazos:* al modificar cualquiera de estas variables en `.env`, se debe ejecutar:
 
   ```bash
@@ -475,7 +487,7 @@ _Estados utilizados: Solventado | Solventado en código | A cargo de la UTI | Ri
 - *Mitigación técnica:* Los valores normativos están en una tabla con `norm_group` y `norm_year`,
   cargada por seeder. Un cambio de baremo es una actualización de datos, no de código: basta cargar las
   filas del nuevo grupo normativo y ajustar `norm_group`.
-- *Cómo asigna el percentil a puntajes intermedios* #verificar[comportamiento documentado]: la tabla
+- *Cómo asigna el percentil a puntajes intermedios:* la tabla
   fuente solo define 7 percentiles de referencia (1, 10, 25, 50, 75, 90, 99). `findPercentile` procede en
   dos pasos:
   + Busca el registro *exacto* para la edad y el puntaje bruto (`forScore`).
@@ -608,7 +620,10 @@ botón en producción. Comprobadas con `php -m` y `composer check-platform-reqs`
 = 7. Anexo — Evidencia de ejecución
 
 Las afirmaciones de este informe se apoyan en la suite de pruebas del proyecto, que se ejecuta con
-`php artisan test`. Estado al 2026-09-20: *132 pruebas en verde y 469 aserciones*.
+`php artisan test`. Estado al 2026-09-21 —última ejecución, en la rama de cierre—: *146 pruebas y 667
+aserciones: 145 en verde y 1 en rojo*. En la verificación inicial del informe (2026-09-20) eran 132
+pruebas en verde y 469 aserciones; la diferencia son las pruebas del rol `evaluador`, del instrumento de
+solo lectura y de la auditoría de cuentas.
 
 #table(
   columns: (1.8fr, auto, 1fr),
@@ -617,7 +632,9 @@ Las afirmaciones de este informe se apoyan en la suite de pruebas del proyecto, 
   [Separación de acceso candidato/administración], [8], [`tests/Feature/Rnf0903AccessSeparationTest.php`],
   [Retención y su registro], [17], [`tests/Feature/Rnf09RetentionTest.php`],
   [Integridad del banco de ítems], [13], [`tests/Feature/TestBankIntegrityTest.php`],
-  [Reglas de interfaz del banco], [7], [`tests/Feature/TestBankUiRulesTest.php`],
+  [Instrumento de solo lectura en la interfaz], [3], [`tests/Feature/TestBankUiRulesTest.php`],
+  [Matriz de permisos de los tres roles], [11], [`tests/Feature/PanelRolePermissionsTest.php`],
+  [Auditoría de cuentas del panel], [6], [`tests/Feature/UserAccountAuditTest.php`],
   [Láminas del test en el repositorio], [4], [`tests/Feature/TestAssetsIntegrityTest.php`],
   [Formato del identificador DUI/NIT], [23], [`tests/Feature/RnfDocumentFormatTest.php`],
   [Límite de intentos en registro y login], [16], [`CandidateRegistrationThrottleTest.php`, `CandidateLoginThrottleTest.php`],
