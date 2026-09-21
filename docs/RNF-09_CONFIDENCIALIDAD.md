@@ -135,6 +135,10 @@ requisito:
     masiva a Excel/CSV. No entra a usuarios, instrumento ni páginas de edición.
   - `evaluador`: solo consulta (candidatos, sesiones, resultados e instrumento) y descarga del
     informe PDF individual, también auditada. No tiene exportación masiva ni acceso a usuarios.
+- **Auditoría de los accesos:** el alta de una cuenta del panel y el cambio de su rol se registran en
+  `activity_logs` con los eventos `user_created` y `user_role_changed` (rol anterior y nuevo, quién lo
+  hizo, IP y user agent). Se escriben desde los eventos del modelo `User`, así que cubren cualquier vía
+  —el panel, `artisan tinker` o un seeder— y nunca incluyen la contraseña ni su hash.
 - **Las rutas del test resuelven siempre la sesión del candidato autenticado**: no existe ninguna que
   acepte el identificador de una sesión ajena.
 - **El instrumento está en modo consulta para todos los roles**, `admin` incluido: series, reactivos,

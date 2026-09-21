@@ -198,8 +198,9 @@ _Estados utilizados: Solventado | Solventado en código | A cargo de la UTI | Ri
     `candidate_name`, `candidate_email`, `candidate_dui_nit`, `password_origin`
     (`generated` | `manual`), `is_temporary`, `candidate_test_completed`, `had_started_test`,
     `changed_at`.
-  - Eventos registrados hoy: `candidate_password_reset`, `exported`, `retention_dissociated`.
-    `log()` acepta cualquier valor de `event`.
+  - Eventos registrados hoy: `candidate_password_reset`, `exported`, `retention_dissociated`,
+    `user_created` y `user_role_changed` (los dos últimos, sobre las cuentas del panel: alta y cambio de
+    rol). `log()` acepta cualquier valor de `event`.
 - *Archivos / documentos afectados:* los indicados arriba, más `docs/AUDITORIA_Y_PLAN_ACTUALIZACION.md`.
 == Observación 5 — Campo de identificación `DUI/NIT`
 
@@ -377,7 +378,7 @@ _Estados utilizados: Solventado | Solventado en código | A cargo de la UTI | Ri
   [Contraseñas], [Hash irreversible con el driver de hash de Laravel (cast `hashed`); el restablecimiento lo ejecuta un administrador y queda auditado],
   [Serialización], [`dui_nit_hash` no se incluye en las respuestas; el listado del panel muestra el identificador enmascarado (`•••••4567`)],
   [Separación de acceso], [Guards independientes para candidato y administración, con autorización por roles],
-  [Auditoría], [Restablecimientos de contraseña, exportaciones y disociaciones por retención quedan en `activity_logs`],
+  [Auditoría], [Restablecimientos de contraseña, exportaciones, altas y cambios de rol de cuentas del panel, y disociaciones por retención quedan en `activity_logs`],
   [Retención], [Cuatro categorías con plazo y acción configurables; aplicación automática diaria con registro en `retention_logs`],
 )
 
@@ -506,15 +507,22 @@ _Estados utilizados: Solventado | Solventado en código | A cargo de la UTI | Ri
   - *Auditoría:* `ActivityLogService::logExport()` se invoca en las exportaciones de `CandidatesTable`
     y `TestResultsTable`, incluido el informe PDF individual; una descarga hecha por un `evaluador`
     queda registrada con `exported_by_role = evaluador`.
+  - *Auditoría de cuentas:* el alta y el cambio de rol de una cuenta del panel quedan registrados con
+    los eventos `user_created` y `user_role_changed`, con el rol anterior y el nuevo, quién lo hizo y
+    desde qué IP. Se registran desde el modelo `User` —siempre con `ActivityLogService`— para cubrir
+    todas las vías: el alta y la edición desde la lista, la página de edición y `artisan tinker`.
   - *Pruebas:* `tests/Feature/PanelRolePermissionsTest.php` (matriz de los tres roles, exportaciones y
-    auditoría) y `tests/Feature/TestBankUiRulesTest.php` (instrumento de solo lectura).
+    auditoría), `tests/Feature/TestBankUiRulesTest.php` (instrumento de solo lectura) y
+    `tests/Feature/UserAccountAuditTest.php` (auditoría de cuentas).
 - *Eventos de auditoría que existen hoy:* `candidate_password_reset` (reseteo de credenciales por un
-  administrador), `exported` (exportaciones de candidatos y resultados, informe PDF incluido) y
-  `retention_dissociated` (disociación por política de retención).
-  *No generan evento propio* la creación o modificación de usuarios del panel, la edición del banco
-  de reactivos ni la validación de resultados. Se declara como limitación conocida del control
-  compensatorio: la trazabilidad cubre las acciones sobre datos personales y las exportaciones, no toda
-  la administración.
+  administrador), `exported` (exportaciones de candidatos y resultados, informe PDF incluido),
+  `retention_dissociated` (disociación por política de retención), `user_created` (alta de una cuenta
+  del panel) y `user_role_changed` (cambio de rol de una cuenta del panel).
+  *No generan evento propio* la validación de resultados, la baja de una cuenta ni los demás campos de
+  una cuenta (nombre, correo o `is_active`): el registro cubre el rol, que es lo que decide el acceso.
+  La edición del banco de reactivos ya no es un caso pendiente: el instrumento es de solo lectura. Se
+  declara como limitación conocida del control compensatorio: la trazabilidad cubre las acciones sobre
+  datos personales, las exportaciones y la asignación de roles, no toda la administración.
 - *Hallazgo:* El rol `admin` concentra la operación diaria de candidatos, la validación de resultados
   (RF-44) y la gestión de cuentas del panel, incluida la creación de otros admins (RF-45). Quien opera
   a diario también puede crear cuentas o exportar conjuntos amplios de datos.
@@ -525,8 +533,8 @@ _Estados utilizados: Solventado | Solventado en código | A cargo de la UTI | Ri
   migración, con historial en el repositorio.
 - *Controles compensatorios:*
   + Limitar las cuentas `admin` a las estrictamente necesarias y revisarlas periódicamente.
-  + Registro de auditoría en `activity_logs` de reseteos de contraseña y exportaciones (ver la
-    limitación declarada arriba).
+  + Registro de auditoría en `activity_logs` de reseteos de contraseña, exportaciones y gestión de
+    cuentas (alta y cambio de rol), con las limitaciones declaradas arriba.
   + El instrumento es inmutable desde el panel y las sesiones de test son de solo lectura incluso para
     `admin`.
 - *Riesgo aceptado:* Un administrador de operación diaria (o una cuenta comprometida) todavía puede
@@ -593,9 +601,9 @@ botón en producción. Comprobadas con `php -m` y `composer check-platform-reqs`
   fijarse antes de activar `RETENCION_ACTIVA` en producción, probando antes con `--dry-run`.
 - *Claves (Obs. 8):* perder `APP_KEY` inutiliza los identificadores cifrados. `bin/backup.sh` respalda
   base y clave juntas y el procedimiento de restauración fue verificado de extremo a extremo.
-- *Auditoría del panel (Obs. 10):* la creación de usuarios, la edición del banco de ítems y la
-  validación de resultados no generan evento propio. Es la limitación declarada del control
-  compensatorio.
+- *Auditoría del panel (Obs. 10):* el alta de cuentas del panel y el cambio de rol quedan auditados
+  (`user_created`, `user_role_changed`); la validación de resultados y los demás campos de una cuenta no
+  generan evento propio. Es la limitación declarada del control compensatorio.
 
 = 7. Anexo — Evidencia de ejecución
 

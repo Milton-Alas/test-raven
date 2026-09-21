@@ -55,7 +55,7 @@ descargar su informe.
 | Vite | 8 | |
 | Tailwind CSS | 4 | |
 | DomPDF | 3 | informes en PDF |
-| PHPUnit | 11 | 140 pruebas |
+| PHPUnit | 11 | 146 pruebas |
 
 **Extensiones de PHP necesarias:** `intl` (Filament usa `Number::format`), `gd` (DomPDF incrusta el
 logo del informe) y `zip` (exportaciones a Excel vía `openspout`). Están declaradas en
@@ -96,7 +96,7 @@ forma aislada.
 | `ResultCalculatorService` | Cálculo de puntajes, percentil, rango diagnóstico y validez por discrepancia |
 | `CandidatePasswordResetService` | Reseteo manual de credenciales por un administrador, con auditoría |
 | `RetentionService` | Aplicación de las políticas de retención (disociar / suprimir) |
-| `ActivityLogService` | Registro de auditoría de acciones |
+| `ActivityLogService` | Registro de auditoría de acciones: reseteo de credenciales, exportaciones, altas y cambios de rol de cuentas del panel, y disociación por retención |
 
 ### Modelo de datos
 
@@ -238,6 +238,11 @@ está en [`docs/RNF-09_CONFIDENCIALIDAD.md`](docs/RNF-09_CONFIDENCIALIDAD.md).
 - **Credenciales:** bcrypt irreversible; el restablecimiento lo hace un administrador y queda auditado.
 - **Separación de acceso:** guards independientes para candidato y administración, con autorización
   por roles. Los datos psicométricos no están al alcance del candidato.
+- **Auditoría (`activity_logs`):** cinco eventos —`candidate_password_reset`, `exported`,
+  `retention_dissociated`, `user_created` y `user_role_changed`— con causer, subject, `properties`
+  (JSON), `changes` (JSON), IP y user agent. El rol de una cuenta se audita pase por donde pase (panel,
+  consola o `tinker`), porque lo escriben los eventos del modelo `User`. Las contraseñas —ni su hash—
+  nunca entran en el registro.
 - **Retención configurable:** cuatro categorías (personal, psicométrico, actividad, técnico) con
   plazo y acción (`disociar` / `suprimir`) ajustables por entorno.
 - **Aplicación automática:** tarea diaria que deja registro en `retention_logs`.
@@ -353,7 +358,7 @@ php artisan test --filter=Rnf09       # confidencialidad y retención
 php artisan test --filter=TestBank    # integridad del instrumento
 ```
 
-**140 pruebas, 618 aserciones.** Organizadas por lo que protegen:
+**146 pruebas, 667 aserciones.** Organizadas por lo que protegen:
 
 | Archivo | Qué garantiza |
 | --- | --- |
@@ -363,6 +368,7 @@ php artisan test --filter=TestBank    # integridad del instrumento
 | `TestBankIntegrityTest` | No se puede borrar ni reescribir el contenido del test |
 | `TestBankUiRulesTest` | La interfaz del instrumento es de solo lectura: sin alta, edición ni borrado |
 | `PanelRolePermissionsTest` | Matriz de permisos de `admin`, `reporter` y `evaluador` sobre los ocho recursos |
+| `UserAccountAuditTest` | El alta y el cambio de rol de una cuenta del panel quedan auditados, sin credenciales |
 | `TestAssetsIntegrityTest` | Las láminas que la base referencia existen en el repositorio |
 | `CandidateRegistrationThrottleTest` / `CandidateLoginThrottleTest` | Límites de intentos en registro y login |
 | `CandidatePasswordResetTest` | Reseteo por administrador con auditoría y sin filtrar credenciales |
@@ -381,7 +387,7 @@ php artisan test --filter=TestBank    # integridad del instrumento
 
 ### Estado actual
 
-139 pruebas en verde y **1 en rojo**: `Tests\Feature\ExampleTest`, un ejemplo del esqueleto de Laravel
+145 pruebas en verde y **1 en rojo**: `Tests\Feature\ExampleTest`, un ejemplo del esqueleto de Laravel
 que espera un 200 en `/` y recibe la redirección al login. No cubre funcionalidad del sistema.
 
 ---

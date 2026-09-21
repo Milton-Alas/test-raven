@@ -300,6 +300,9 @@ consultan desde el panel, pero ningún rol —tampoco `admin`— puede crearlos,
 ahí: determinan el puntaje y el diagnóstico de los tests ya rendidos, así que cualquier cambio se hace
 por seeder o migración, con control de versiones y rastro.
 
+*Trazabilidad de los accesos.* El alta de una cuenta del panel y todo cambio de rol quedan registrados
+en la auditoría (`activity_logs`), con la fecha, quién lo hizo y el rol anterior y el nuevo.
+
 == Dashboard Principal
 Al entrar verás widgets con *KPIs clave*:
 - Total de candidatos registrados.
