@@ -38,7 +38,7 @@ class TestResultResource extends Resource
 
     public static function canViewAny(): bool
     {
-        return in_array(Auth::user()?->role, ['admin', 'reporter'], true);
+        return in_array(Auth::user()?->role, ['admin', 'reporter', 'evaluador'], true);
     }
 
     public static function canCreate(): bool
@@ -69,6 +69,18 @@ class TestResultResource extends Resource
     public static function canRestoreAny(): bool
     {
         return Auth::user()?->role === 'admin';
+    }
+
+    /**
+     * Exportación masiva del listado de resultados (Excel y CSV).
+     *
+     * El rol `evaluador` no la tiene: consulta los resultados y descarga el
+     * informe PDF individual —auditado como cualquier otra exportación—, pero no
+     * se lleva el conjunto completo en un archivo.
+     */
+    public static function canExport(): bool
+    {
+        return in_array(Auth::user()?->role, ['admin', 'reporter'], true);
     }
 
     public static function form(Schema $schema): Schema

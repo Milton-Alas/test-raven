@@ -122,6 +122,9 @@ class CandidatesTable
                         ->label('Exportar Seleccionados')
                         ->icon('heroicon-o-arrow-down-tray')
                         ->color('success')
+                        // Fuera del alcance del rol `evaluador`: consulta, sin
+                        // exportación masiva (ver CandidateResource::canExport()).
+                        ->visible(fn (): bool => CandidateResource::canExport())
                         ->action(function (EloquentCollection $records): StreamedResponse {
                             $filename = static::exportFilename();
                             $response = static::exportToCsv($records, $filename);

@@ -2,18 +2,14 @@
 
 namespace Tests\Feature;
 
-use App\Filament\Resources\DiagnosticRanges\Pages\EditDiagnosticRange;
 use App\Filament\Resources\DiagnosticRanges\Pages\ListDiagnosticRanges;
-use App\Filament\Resources\PercentileTables\Pages\EditPercentileTable;
+use App\Filament\Resources\PercentileTables\Pages\ListPercentileTables;
 use App\Filament\Resources\TestQuestions\Pages\ListTestQuestions;
-use App\Filament\Resources\TestSeries\Pages\EditTestSeries;
 use App\Filament\Resources\TestSeries\Pages\ListTestSeries;
-use App\Models\Candidate;
 use App\Models\DiagnosticRange;
 use App\Models\PercentileTable;
 use App\Models\TestQuestion;
 use App\Models\TestSeries;
-use App\Models\TestSession;
 use App\Models\User;
 use Filament\Actions\Testing\TestAction;
 use Illuminate\Foundation\Testing\RefreshDatabase;
@@ -21,11 +17,13 @@ use Livewire\Livewire;
 use Tests\TestCase;
 
 /**
- * Reglas de interfaz del panel para el contenido histórico del test.
+ * Reglas de interfaz del panel para el instrumento del test.
  *
- * El modelo ya impide borrar y reescribir (ver TestBankIntegrityTest); aquí se
- * comprueba que la interfaz no ofrezca esas acciones y que el administrador
- * entienda por qué antes de intentarlo.
+ * El instrumento (series, reactivos, baremos y rangos diagnósticos) es contenido
+ * normalizado: el panel solo lo muestra. No hay alta, edición ni borrado para
+ * ningún rol, `admin` incluido, porque cualquier cambio real debe entrar por
+ * seeder o migración, con control de versiones y rastro. El modelo lo refuerza
+ * por su cuenta (ver TestBankIntegrityTest); aquí se comprueba la interfaz.
  */
 class TestBankUiRulesTest extends TestCase
 {
@@ -33,11 +31,26 @@ class TestBankUiRulesTest extends TestCase
 
     private function admin(): User
     {
+        return $this->usuario(User::ROLE_ADMIN, 'admin@example.test');
+    }
+
+    private function reporter(): User
+    {
+        return $this->usuario(User::ROLE_REPORTER, 'reporter@example.test');
+    }
+
+    private function evaluador(): User
+    {
+        return $this->usuario(User::ROLE_EVALUADOR, 'evaluador@example.test');
+    }
+
+    private function usuario(string $rol, string $email): User
+    {
         return User::create([
-            'name' => 'Admin',
-            'email' => 'admin@example.test',
+            'name' => "Usuario {$rol}",
+            'email' => $email,
             'password' => 'password',
-            'role' => User::ROLE_ADMIN,
+            'role' => $rol,
             'is_active' => true,
         ]);
     }
@@ -59,105 +72,9 @@ class TestBankUiRulesTest extends TestCase
         ]);
     }
 
-    private function iniciarTestEnCurso(): void
+    private function baremo(): PercentileTable
     {
-        $candidate = Candidate::create([
-            'name' => 'En Curso',
-            'email' => 'encurso@example.test',
-            'dui_nit' => '12345678-9',
-            'password' => 'clave-123456',
-            'age' => 25,
-            'is_active' => true,
-        ]);
-
-        TestSession::create([
-            'candidate_id' => $candidate->id,
-            'status' => 'in_progress',
-            'started_at' => now(),
-        ]);
-    }
-
-    // ------------------------------------------------------- sin borrado
-
-    public function test_las_tablas_del_banco_no_ofrecen_borrado(): void
-    {
-        $serie = $this->serie();
-        $this->pregunta($serie);
-        $this->actingAs($this->admin());
-
-        // No están ocultas: simplemente no existen en la tabla.
-        Livewire::test(ListTestSeries::class)
-            ->assertActionDoesNotExist(TestAction::make('delete')->table($serie))
-            ->assertActionDoesNotExist(TestAction::make('delete')->table()->bulk());
-
-        Livewire::test(ListTestQuestions::class)
-            ->assertActionDoesNotExist(TestAction::make('delete')->table()->bulk());
-    }
-
-    public function test_la_pagina_de_edicion_no_tiene_acciones_de_borrado(): void
-    {
-        $serie = $this->serie();
-        $this->actingAs($this->admin());
-
-        $pregunta = $this->pregunta($serie);
-
-        foreach ([
-            "/admin/test-series/{$serie->getKey()}/edit",
-            "/admin/test-questions/{$pregunta->getKey()}/edit",
-        ] as $ruta) {
-            $this->get($ruta)
-                ->assertOk()
-                ->assertDontSee('Eliminar')
-                ->assertDontSee('Borrar');
-        }
-    }
-
-    // ------------------------------------------- solo consulta al editar
-
-    public function test_el_formulario_de_edicion_explica_que_es_consulta(): void
-    {
-        $serie = $this->serie();
-
-        $this->actingAs($this->admin())
-            ->get("/admin/test-series/{$serie->getKey()}/edit")
-            ->assertOk()
-            ->assertSee('Registro histórico');
-    }
-
-    public function test_los_campos_de_contenido_estan_deshabilitados_al_editar(): void
-    {
-        $serie = $this->serie();
-
-        // El campo de contenido se renderiza deshabilitado: el administrador no
-        // puede cambiarlo desde la interfaz.
-        $html = $this->actingAs($this->admin())
-            ->get("/admin/test-series/{$serie->getKey()}/edit")
-            ->assertOk()
-            ->getContent();
-
-        // El orden de atributos del HTML no es estable, así que se extrae la
-        // etiqueta del campo y se comprueba si incluye "disabled".
-        $this->assertInputIsDisabled($html, 'form.code');
-        $this->assertInputIsDisabled($html, 'form.name');
-
-        // La vigencia no se deshabilita (es un checkbox y no expone id propio):
-        // queda cubierto por el guardado real que se hace más abajo.
-
-        // ...pero la vigencia sí se puede cambiar, para retirar la serie sin
-        // destruir la historia.
-        Livewire::test(EditTestSeries::class, ['record' => $serie->getKey()])
-            ->fillForm(['is_active' => false])
-            ->call('save')
-            ->assertHasNoFormErrors();
-
-        $this->assertFalse($serie->fresh()->is_active);
-    }
-
-    public function test_el_baremo_y_el_rango_muestran_sus_campos_en_consulta(): void
-    {
-        $this->actingAs($this->admin());
-
-        $tabla = PercentileTable::create([
+        return PercentileTable::create([
             'age_min' => 18,
             'age_max' => 24,
             'raw_score' => 40,
@@ -165,15 +82,11 @@ class TestBankUiRulesTest extends TestCase
             'norm_group' => 'Montevideo',
             'is_active' => true,
         ]);
+    }
 
-        Livewire::test(EditPercentileTable::class, ['record' => $tabla->getKey()])
-            ->fillForm(['is_active' => false])
-            ->call('save')
-            ->assertHasNoFormErrors();
-
-        $this->assertFalse($tabla->fresh()->is_active);
-
-        $rango = DiagnosticRange::create([
+    private function rango(): DiagnosticRange
+    {
+        return DiagnosticRange::create([
             'percentile_min' => 75,
             'percentile_max' => 94,
             'range_number' => 2,
@@ -181,70 +94,116 @@ class TestBankUiRulesTest extends TestCase
             'diagnostic_label' => 'Superior al Término Medio',
             'interpretation' => 'Texto',
         ]);
-
-        // Este modelo no tiene columna is_active: todo queda en consulta, y
-        // cualquier intento de guardar un cambio de contenido se rechaza con un
-        // mensaje que explica el motivo.
-        Livewire::test(EditDiagnosticRange::class, ['record' => $rango->getKey()])
-            ->fillForm(['diagnostic_label' => 'Otro diagnóstico'])
-            ->call('save');
-
-        $this->assertSame('Superior al Término Medio', $rango->fresh()->diagnostic_label);
-    }
-
-    // -------------------------------------------------- alta condicionada
-
-    public function test_no_se_puede_crear_contenido_mientras_hay_un_test_en_curso(): void
-    {
-        $this->iniciarTestEnCurso();
-        $this->actingAs($this->admin());
-
-        Livewire::test(ListTestSeries::class)
-            ->assertActionDisabled(TestAction::make('create'));
-
-        Livewire::test(ListTestQuestions::class)
-            ->assertActionDisabled(TestAction::make('create'));
-
-        Livewire::test(ListDiagnosticRanges::class)
-            ->assertActionDisabled(TestAction::make('create'));
-    }
-
-    public function test_se_puede_crear_contenido_cuando_no_hay_tests_en_curso(): void
-    {
-        $this->actingAs($this->admin());
-
-        Livewire::test(ListTestSeries::class)
-            ->assertActionEnabled(TestAction::make('create'));
     }
 
     /**
-     * Comprueba que el campo se renderiza deshabilitado, sin depender del orden
-     * de los atributos del HTML.
+     * Autentica a un usuario y limpia la sesión.
+     *
+     * Hace falta porque el panel incluye `AuthenticateSession`: al cambiar de
+     * usuario dentro de la misma prueba, el hash de contraseña guardado en la
+     * sesión deja de coincidir y el middleware cierra la sesión (la petición
+     * siguiente acabaría redirigida al login en vez de evaluar el permiso).
      */
-    private function assertInputIsDisabled(string $html, string $id): void
+    private function autenticarComo(User $usuario): void
     {
-        $etiqueta = $this->inputTagFor($html, $id);
-
-        $this->assertStringContainsString(
-            'disabled',
-            $etiqueta,
-            "El campo {$id} debe renderizarse deshabilitado."
-        );
+        $this->actingAs($usuario);
+        $this->flushSession();
     }
 
     /**
-     * Devuelve la etiqueta <input> del campo indicado.
+     * Rutas de alta y edición del instrumento, con un registro real de cada
+     * recurso para que el 403 no dependa de un identificador inexistente.
+     *
+     * @return array<string, string>
      */
-    private function inputTagFor(string $html, string $id): string
+    private function rutasDeAltaYEdicion(): array
     {
-        $encontrado = preg_match(
-            '/<input[^>]*id="'.preg_quote($id, '/').'"[^>]*>/s',
-            $html,
-            $coincidencias
-        );
+        $serie = $this->serie();
+        $pregunta = $this->pregunta($serie);
+        $baremo = $this->baremo();
+        $rango = $this->rango();
 
-        $this->assertSame(1, $encontrado, "No se encontró el campo {$id} en el formulario.");
+        return [
+            'alta de series' => '/admin/test-series/create',
+            'edición de series' => "/admin/test-series/{$serie->getKey()}/edit",
+            'alta de reactivos' => '/admin/test-questions/create',
+            'edición de reactivos' => "/admin/test-questions/{$pregunta->getKey()}/edit",
+            'alta de baremos' => '/admin/percentile-tables/create',
+            'edición de baremos' => "/admin/percentile-tables/{$baremo->getKey()}/edit",
+            'alta de rangos' => '/admin/diagnostic-ranges/create',
+            'edición de rangos' => "/admin/diagnostic-ranges/{$rango->getKey()}/edit",
+        ];
+    }
 
-        return $coincidencias[0];
+    // ------------------------------------------------- sin alta ni edición
+
+    public function test_las_paginas_de_alta_y_edicion_del_instrumento_estan_cerradas_para_todos_los_roles(): void
+    {
+        $rutas = $this->rutasDeAltaYEdicion();
+
+        foreach ([$this->admin(), $this->reporter(), $this->evaluador()] as $usuario) {
+            $this->autenticarComo($usuario);
+
+            foreach ($rutas as $descripcion => $ruta) {
+                $this->assertSame(
+                    403,
+                    $this->get($ruta)->getStatusCode(),
+                    "El rol {$usuario->role} no debería poder entrar a la {$descripcion}."
+                );
+            }
+        }
+    }
+
+    public function test_las_tablas_del_instrumento_no_ofrecen_alta_edicion_ni_borrado(): void
+    {
+        $serie = $this->serie();
+        $pregunta = $this->pregunta($serie);
+
+        // Con el rol más privilegiado: si el admin no ve estas acciones, ningún
+        // otro rol las ve.
+        $this->autenticarComo($this->admin());
+
+        $tablas = [
+            'series' => [ListTestSeries::class, $serie],
+            'reactivos' => [ListTestQuestions::class, $pregunta],
+            'baremos' => [ListPercentileTables::class, $this->baremo()],
+            'rangos' => [ListDiagnosticRanges::class, $this->rango()],
+        ];
+
+        foreach ($tablas as $nombre => [$pagina, $registro]) {
+            // No están ocultas: simplemente no existen en la tabla.
+            Livewire::test($pagina)
+                ->assertActionDoesNotExist(TestAction::make('create'))
+                ->assertActionDoesNotExist(TestAction::make('edit')->table($registro))
+                ->assertActionDoesNotExist(TestAction::make('delete')->table($registro))
+                ->assertActionDoesNotExist(TestAction::make('delete')->table()->bulk());
+        }
+    }
+
+    // -------------------------------------------------------- solo consulta
+
+    public function test_el_instrumento_se_consulta_desde_el_panel_con_su_contenido(): void
+    {
+        $this->serie();
+        $this->baremo();
+        $this->rango();
+
+        foreach ([$this->admin(), $this->evaluador()] as $usuario) {
+            $this->autenticarComo($usuario);
+
+            // La lista es la vía de consulta: muestra el contenido del
+            // instrumento sin ofrecer ninguna forma de cambiarlo.
+            $this->get('/admin/test-series')
+                ->assertOk()
+                ->assertSee('Serie A');
+
+            foreach ([
+                '/admin/test-questions',
+                '/admin/percentile-tables',
+                '/admin/diagnostic-ranges',
+            ] as $ruta) {
+                $this->get($ruta)->assertOk();
+            }
+        }
     }
 }

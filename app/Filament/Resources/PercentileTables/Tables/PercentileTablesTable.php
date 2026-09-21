@@ -3,7 +3,6 @@
 namespace App\Filament\Resources\PercentileTables\Tables;
 
 use App\Models\PercentileTable;
-use Filament\Actions\EditAction;
 use Filament\Tables\Columns\IconColumn;
 use Filament\Tables\Columns\TextColumn;
 use Filament\Tables\Filters\TernaryFilter;
@@ -63,7 +62,8 @@ class PercentileTablesTable
                     ->native(false),
             ])
             ->recordActions([
-                EditAction::make(),
+                // Sin acciones de registro: el baremo es de solo lectura en el
+                // panel (ver PercentileTableResource).
             ])
             ->toolbarActions([
                 // Sin acciones destructivas: el modelo las prohíbe.

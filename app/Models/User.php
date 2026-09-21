@@ -16,6 +16,7 @@ class User extends Authenticatable implements FilamentUser
 
     public const ROLE_ADMIN = 'admin';
     public const ROLE_REPORTER = 'reporter';
+    public const ROLE_EVALUADOR = 'evaluador';
 
     /**
      * The attributes that are mass assignable.
@@ -58,7 +59,11 @@ class User extends Authenticatable implements FilamentUser
 
     public function canAccessPanel(Panel $panel): bool
     {
-        return $this->is_active && in_array($this->role, [self::ROLE_ADMIN, self::ROLE_REPORTER], true);
+        return $this->is_active && in_array($this->role, [
+            self::ROLE_ADMIN,
+            self::ROLE_REPORTER,
+            self::ROLE_EVALUADOR,
+        ], true);
     }
 
     public static function getRoles(): array
@@ -66,6 +71,7 @@ class User extends Authenticatable implements FilamentUser
         return [
             self::ROLE_ADMIN => 'Admin',
             self::ROLE_REPORTER => 'Reporter',
+            self::ROLE_EVALUADOR => 'Evaluador',
         ];
     }
 
@@ -77,5 +83,10 @@ class User extends Authenticatable implements FilamentUser
     public function isReporter(): bool
     {
         return $this->role === self::ROLE_REPORTER;
+    }
+
+    public function isEvaluador(): bool
+    {
+        return $this->role === self::ROLE_EVALUADOR;
     }
 }

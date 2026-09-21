@@ -2,32 +2,29 @@
 
 namespace App\Filament\Support;
 
-use App\Models\TestSession;
 use Filament\Forms\Components\Field;
 use Filament\Schemas\Components\Section;
 
 /**
  * Reglas de interfaz para el contenido histórico del test.
  *
- * El contenido del test (series, preguntas, opciones y tablas normativas) está
- * protegido en los modelos por `PreservesHistoricalData`: no se puede borrar ni
- * reescribir. Este helper traduce esa regla a la interfaz para que el
- * administrador lo vea antes de intentarlo, en lugar de encontrarse con una
- * excepción al guardar.
+ * El contenido del test (series, reactivos, opciones y tablas normativas) es
+ * instrumento normalizado: está protegido en los modelos por
+ * `PreservesHistoricalData` y el panel no lo crea, edita ni borra para ningún
+ * rol, `admin` incluido (ver `canCreate()`/`canEdit()` de cada Resource). Este
+ * helper traduce esa regla a la interfaz para que se entienda al consultarlo, en
+ * lugar de encontrarse con una excepción al guardar.
  *
  * Criterio de la interfaz:
  *
- *  - **Editar**: los campos de contenido se muestran deshabilitados (se pueden
- *    consultar, pero no cambiar). Solo `is_active` queda editable, para retirar
- *    un ítem sin destruir la historia.
- *  - **Crear**: los campos están habilitados, porque cargar reactivos nuevos es
- *    una tarea legítima mientras no haya un test en curso (eso lo controla el
- *    modelo).
+ *  - **Consultar**: los campos de contenido se muestran deshabilitados junto al
+ *    aviso `notice()`, que explica por qué y por dónde sí se cambian los datos
+ *    (seeder o migración, con control de versiones).
  */
 class HistoricalContent
 {
     /**
-     * Deshabilita un campo únicamente en la edición.
+     * Deshabilita un campo en la edición.
      *
      * @template T of Field
      *
@@ -38,7 +35,7 @@ class HistoricalContent
     {
         return $field
             ->disabledOn('edit')
-            ->helperText('El contenido del test no se puede modificar: determina el puntaje y el diagnóstico de tests ya rendidos. Para retirarlo, usa «Activo».');
+            ->helperText('El contenido del test no se puede modificar: determina el puntaje y el diagnóstico de tests ya rendidos.');
     }
 
     /**
@@ -57,38 +54,18 @@ class HistoricalContent
     }
 
     /**
-     * Aviso que se muestra al inicio de un formulario de edición.
+     * Aviso que se muestra al inicio del formulario del instrumento.
      */
     public static function notice(string $recurso): Section
     {
         return Section::make('Registro histórico')
             ->description(
-                "Este {$recurso} forma parte del instrumento con el que se calcularon resultados ya emitidos, "
-                .'así que sus datos se muestran en modo consulta. Puedes activarlo o desactivarlo, pero no borrarlo '
-                .'ni reescribir su contenido: eso invalidaría los puntajes y percentiles existentes.'
+                "Este {$recurso} forma parte del instrumento normalizado con el que se calcularon resultados ya "
+                .'emitidos, así que se muestra en modo consulta. No se puede crear, modificar ni borrar desde el '
+                .'panel: cualquier cambio real debe entrar por seeder o migración, con control de versiones, para '
+                .'que quede rastro de quién lo hizo y por qué.'
             )
             ->compact()
             ->columnSpanFull();
-    }
-
-    /**
-     * ¿Está bloqueada la creación de contenido nuevo?
-     *
-     * Se bloquea mientras haya una sesión de test en curso: un candidato que está
-     * respondiendo vería un instrumento distinto a mitad de la prueba.
-     */
-    public static function creationLocked(): bool
-    {
-        return TestSession::hayTestEnCurso();
-    }
-
-    /**
-     * Explicación del bloqueo de creación, para el aviso de la interfaz.
-     */
-    public static function creationLockedNotice(): string
-    {
-        return 'Hay un test en curso, así que no se puede cargar contenido nuevo en este momento. '
-            .'Espera a que no queden sesiones activas: si el instrumento cambiara ahora, los candidatos que están '
-            .'respondiendo verían un test distinto a mitad de la prueba.';
     }
 }

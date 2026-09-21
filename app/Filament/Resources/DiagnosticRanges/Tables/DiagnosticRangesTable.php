@@ -3,7 +3,6 @@
 namespace App\Filament\Resources\DiagnosticRanges\Tables;
 
 use App\Models\DiagnosticRange;
-use Filament\Actions\EditAction;
 use Filament\Actions\ViewAction;
 use Filament\Tables\Columns\TextColumn;
 use Filament\Tables\Table;
@@ -60,7 +59,8 @@ class DiagnosticRangesTable
                 //
             ])
             ->recordActions([
-                EditAction::make(),
+                // Solo consulta: los rangos son la clave de calificación y no se
+                // modifican desde el panel (ver DiagnosticRangeResource).
                 ViewAction::make(),
             ])
             ->toolbarActions([

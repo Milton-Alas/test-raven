@@ -111,6 +111,10 @@ class TestResultsTable
                     ->label('Exportar a Excel')
                     ->icon('heroicon-o-table-cells')
                     ->color('success')
+                    // Fuera del alcance del rol `evaluador`: consulta y PDF
+                    // individual, sin exportación masiva (ver
+                    // TestResultResource::canExport()).
+                    ->visible(fn (): bool => TestResultResource::canExport())
                     ->exports([
                         ExcelExport::make('excel')
                             ->fromTable()
@@ -127,6 +131,7 @@ class TestResultsTable
                     ->label('Exportar a CSV')
                     ->icon('heroicon-o-document-arrow-down')
                     ->color('gray')
+                    ->visible(fn (): bool => TestResultResource::canExport())
                     ->exports([
                         ExcelExport::make('csv')
                             ->fromTable()

@@ -2,7 +2,6 @@
 
 namespace App\Filament\Resources\TestQuestions\Tables;
 
-use Filament\Actions\EditAction;
 use Filament\Tables\Columns\IconColumn;
 use Filament\Tables\Columns\ImageColumn;
 use Filament\Tables\Columns\TextColumn;
@@ -91,9 +90,10 @@ class TestQuestionsTable
                     ->native(false),
             ])
             ->recordActions([
-                // Solo edición: el borrado está prohibido en el modelo porque
-                // arrastraría en cascada las respuestas de los candidatos.
-                EditAction::make(),
+                // Sin acciones de registro: el banco de reactivos es de solo
+                // lectura en el panel (ver TestQuestionResource). El borrado,
+                // además, está prohibido en el modelo porque arrastraría en
+                // cascada las respuestas de los candidatos.
             ])
             ->toolbarActions([
                 // Sin acciones masivas: no hay nada destructivo que ofrecer.

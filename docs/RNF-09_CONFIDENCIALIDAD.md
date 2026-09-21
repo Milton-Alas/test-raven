@@ -126,15 +126,21 @@ requisito:
 
 - **Guards separados:** `web` (usuarios) y `candidate` (candidatos) en `config/auth.php`. Una sesión
   de candidato **no da acceso al panel**.
-- **Autorización por roles:** `User::canAccessPanel()` exige rol `admin` o `reporter` **y** cuenta activa.
+- **Autorización por roles:** `User::canAccessPanel()` exige rol `admin`, `reporter` o `evaluador`
+  **y** cuenta activa.
 - **Alcance de cada rol:**
-  - `admin`: acceso completo a la consulta y a la administración.
-  - `reporter`: solo consulta (candidatos, sesiones, resultados) y exportación auditada. No entra a
-    usuarios, instrumento ni páginas de edición.
+  - `admin`: acceso completo a la consulta, a la operación diaria (candidatos y resultados) y a la
+    gestión de usuarios del panel.
+  - `reporter`: solo consulta (candidatos, sesiones, resultados) y exportación auditada, incluida la
+    masiva a Excel/CSV. No entra a usuarios, instrumento ni páginas de edición.
+  - `evaluador`: solo consulta (candidatos, sesiones, resultados e instrumento) y descarga del
+    informe PDF individual, también auditada. No tiene exportación masiva ni acceso a usuarios.
 - **Las rutas del test resuelven siempre la sesión del candidato autenticado**: no existe ninguna que
   acepte el identificador de una sesión ajena.
-- **El banco de ítems está en modo consulta** (ver `AUDITORIA_Y_PLAN_ACTUALIZACION.md`, secciones 2.4 y
-  el commit del banco): solo el `admin` lo ve, y no se puede crear, editar ni eliminar su contenido.
+- **El instrumento está en modo consulta para todos los roles**, `admin` incluido: series, reactivos,
+  baremos y rangos diagnósticos se consultan desde el panel, pero no se crean, editan ni eliminan ahí
+  (ver `AUDITORIA_Y_PLAN_ACTUALIZACION.md`, secciones 2.4 y el commit del banco). Los cambios reales
+  entran por seeder o migración, con control de versiones.
 - **Los datos psicométricos no se exponen al candidato:** las rutas del test devuelven preguntas y
   estado del cronómetro, nunca percentiles ni diagnósticos.
 
@@ -153,6 +159,9 @@ requisito:
 - El `reporter` no puede abrir las páginas de edición de resultados ni de candidatos.
 - El `admin` sí accede a los datos psicométricos.
 - La API del candidato no devuelve `percentile` ni `diagnostic`.
+
+La matriz completa de los tres roles, incluidas las exportaciones y el instrumento de solo lectura, se
+comprueba en `tests/Feature/PanelRolePermissionsTest.php` y `tests/Feature/TestBankUiRulesTest.php`.
 
 ---
 

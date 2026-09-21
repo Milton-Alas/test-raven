@@ -58,7 +58,7 @@
 = 0. Resumen ejecutivo
 
 Esta versión revisa cada observación contra el código, archivo por archivo. Los estados dejaron de ser declaraciones de intención: cada uno se apoya en una referencia concreta o en una prueba automatizada.
-Trece de los puntos están solventados en el código; los restantes dependen de una decisión institucional o de un tercero.
+Ocho de los diez puntos están solventados en el código; los otros dos dependen de una decisión institucional (el baremo) o de un tercero (el ambiente de pruebas, a cargo de la UTI).
 
 #table(
   columns: (auto, 1.6fr, auto, 1.5fr, 2.1fr),
@@ -91,8 +91,8 @@ Trece de los puntos están solventados en el código; los restantes dependen de 
   [Pendiente de decisión institucional],
   [Es una decisión de validez psicométrica. El sistema permite cambiar el baremo por datos, sin tocar código.],
   [10], [Concentración de permisos en el rol `admin`], [Media],
-  [Riesgo aceptado y documentado],
-  [Se mantienen dos roles. Se documentan los controles compensatorios y la recomendación a futuro.],
+  [#ok — alcance separado con un tercer rol],
+  [Se añade el rol `evaluador` (solo consulta) y el instrumento queda de solo lectura para todos los roles, `admin` incluido.],
 )
 
 _Estados utilizados: Solventado | Solventado en código | A cargo de la UTI | Riesgo aceptado | Decisión institucional_
@@ -485,43 +485,56 @@ _Estados utilizados: Solventado | Solventado en código | A cargo de la UTI | Ri
 == Observación 10 — Concentración de permisos en el rol `admin`
 
 - *Prioridad:* Media (no bloquea staging)
-- *Estado:* Riesgo aceptado y documentado — se mantienen dos roles (`admin` y `reporter`)
+- *Estado:* #ok — alcance separado con un tercer rol de solo consulta y el instrumento congelado para
+  todos los roles
 - *Verificación en el código / documentación:*
   - `app/Policies/` no existe y `AppServiceProvider` no define `Gate::before`. La autorización se
     resuelve con los métodos estáticos `canX()` de cada recurso de Filament
     (`canViewAny`, `canCreate`, `canEdit`, `canDelete`, `canDeleteAny`, `canForceDeleteAny`,
-    `canRestoreAny`), que son la única fuente de verdad. Está documentado en
-    `docs/AUDITORIA_Y_PLAN_ACTUALIZACION.md`.
-  - Auditoría: `ActivityLogService::logExport()` se invoca en las exportaciones de `CandidatesTable` y
-    `TestResultsTable`, incluido el informe PDF individual.
-- *Eventos de auditoría que existen hoy* #verificar[listar solo los reales]: `candidate_password_reset`
-  (reseteo de credenciales por un administrador), `exported` (exportaciones de candidatos, resultados e
-  informe PDF) y `retention_dissociated` (disociación por política de retención).
+    `canRestoreAny`), que son la única fuente de verdad; las exportaciones masivas tienen el suyo
+    (`canExport()` en Candidatos y Resultados). La matriz por rol está documentada en el `README.md`.
+  - *Tercer rol:* `evaluador`, añadido al enum de `users.role` (migración
+    `2026_09_21_000000_add_evaluador_role_to_users_table`). Alcance: consulta de candidatos, sesiones,
+    resultados e instrumento, más el informe PDF individual; sin exportación masiva y sin acceso a
+    usuarios. `reporter` conserva su alcance sin cambios y `admin` mantiene la operación diaria y la
+    gestión de cuentas del panel.
+  - *Instrumento congelado:* series, reactivos, baremos y rangos diagnósticos son de solo lectura para
+    *todos* los roles, `admin` incluido. Sus `canCreate()`, `canEdit()`, `canDelete()` y
+    `canDeleteAny()` devuelven `false`, las tablas ya no ofrecen alta ni edición y las páginas `create`
+    y `edit` responden 403. Cualquier cambio real entra por seeder o migración, con control de
+    versiones.
+  - *Auditoría:* `ActivityLogService::logExport()` se invoca en las exportaciones de `CandidatesTable`
+    y `TestResultsTable`, incluido el informe PDF individual; una descarga hecha por un `evaluador`
+    queda registrada con `exported_by_role = evaluador`.
+  - *Pruebas:* `tests/Feature/PanelRolePermissionsTest.php` (matriz de los tres roles, exportaciones y
+    auditoría) y `tests/Feature/TestBankUiRulesTest.php` (instrumento de solo lectura).
+- *Eventos de auditoría que existen hoy:* `candidate_password_reset` (reseteo de credenciales por un
+  administrador), `exported` (exportaciones de candidatos y resultados, informe PDF incluido) y
+  `retention_dissociated` (disociación por política de retención).
   *No generan evento propio* la creación o modificación de usuarios del panel, la edición del banco
   de reactivos ni la validación de resultados. Se declara como limitación conocida del control
   compensatorio: la trazabilidad cubre las acciones sobre datos personales y las exportaciones, no toda
   la administración.
-- *Hallazgo:* El rol `admin` concentra la operación diaria de candidatos, la edición del banco de
-  preguntas y las tablas normativas, la validación de resultados (RF-44) y la gestión de cuentas del
-  panel, incluida la creación de otros admins (RF-45). Quien opera a diario también puede alterar la
-  normativa o crear cuentas.
-- *Nota:* la protección del banco de ítems reduce parcialmente este riesgo en un aspecto distinto: el
-  contenido del instrumento (series, reactivos, opciones y tablas normativas) ya no se puede *borrar
-  ni reescribir* desde el panel —la restricción vive en los modelos y en la interfaz—, así que la
-  concentración de permisos en `admin` no incluye la capacidad de destruir la evidencia histórica.
-- *Decisión:* Mantener dos roles. Separar permisos implicaría modificar la lógica de autorización en la
-  etapa de cierre del proyecto, sin margen de pruebas ni de regresión. Se documenta como riesgo
-  aceptado y no como omisión.
+- *Hallazgo:* El rol `admin` concentra la operación diaria de candidatos, la validación de resultados
+  (RF-44) y la gestión de cuentas del panel, incluida la creación de otros admins (RF-45). Quien opera
+  a diario también puede crear cuentas o exportar conjuntos amplios de datos.
+- *Decisión:* Separar el alcance en lugar de mantener dos roles. El personal de evaluación ya no
+  necesita una cuenta `admin`: con `evaluador` consulta todo lo que su trabajo requiere. Y la facultad
+  de alterar la normativa —la parte del hallazgo con peor consecuencia, porque recalcularía resultados
+  ya emitidos— desaparece del panel para cualquier rol: el instrumento solo se cambia por seeder o
+  migración, con historial en el repositorio.
 - *Controles compensatorios:*
   + Limitar las cuentas `admin` a las estrictamente necesarias y revisarlas periódicamente.
   + Registro de auditoría en `activity_logs` de reseteos de contraseña y exportaciones (ver la
     limitación declarada arriba).
-  + El banco de ítems es inmutable y las sesiones de test son de solo lectura incluso para `admin`.
-- *Riesgo aceptado:* Un administrador de operación diaria (o una cuenta comprometida) podría crear
-  cuentas del panel o exportar conjuntos amplios de datos. El riesgo se mitiga con trazabilidad, no con
-  prevención.
-- *Archivos / documentos afectados:* `docs/AUDITORIA_Y_PLAN_ACTUALIZACION.md`, recursos de Filament de
-  administración.
+  + El instrumento es inmutable desde el panel y las sesiones de test son de solo lectura incluso para
+    `admin`.
+- *Riesgo aceptado:* Un administrador de operación diaria (o una cuenta comprometida) todavía puede
+  crear cuentas del panel y exportar conjuntos amplios de datos. Ese resto se mitiga con trazabilidad y
+  con la revisión periódica de cuentas, no con prevención.
+- *Archivos / documentos afectados:* recursos de Filament de administración y del instrumento,
+  `app/Models/User.php`, la migración del rol, `README.md`, `manual-usuario.typ` y
+  `docs/AUDITORIA_Y_PLAN_ACTUALIZACION.md`.
 = 2. Ajuste de versión del stack tecnológico
 
 Estado verificado el 2026-09-20 contra `composer.json`, `package.json` y los paquetes instalados.

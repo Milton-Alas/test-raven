@@ -39,7 +39,7 @@ class CandidateResource extends Resource
     protected static ?int $navigationSort = 10;
     public static function canViewAny(): bool
     {
-        return in_array(Auth::user()?->role, ['admin', 'reporter'], true);
+        return in_array(Auth::user()?->role, ['admin', 'reporter', 'evaluador'], true);
     }
 
     public static function canCreate(): bool
@@ -70,6 +70,18 @@ class CandidateResource extends Resource
     public static function canRestoreAny(): bool
     {
         return Auth::user()?->role === 'admin';
+    }
+
+    /**
+     * Exportación masiva del listado de candidatos.
+     *
+     * El rol `evaluador` no la tiene: su alcance es la consulta, y el CSV
+     * completo arrastra datos personales de todos los candidatos (nombre,
+     * DUI/NIT, correo, teléfono).
+     */
+    public static function canExport(): bool
+    {
+        return in_array(Auth::user()?->role, ['admin', 'reporter'], true);
     }
 
     public static function form(Schema $schema): Schema

@@ -16,6 +16,15 @@ use Illuminate\Database\Eloquent\Model;
 use Illuminate\Support\Facades\Auth;
 use UnitEnum;
 
+/**
+ * Baremos (Baremo de Montevideo): tabla normativa, de solo lectura en el panel.
+ *
+ * Ningún rol —tampoco `admin`— crea, edita ni elimina desde aquí. El baremo es
+ * la norma con la que se convirtió cada puntaje bruto en percentil y rango
+ * diagnóstico, así que cualquier cambio real debe entrar por seeder o migración,
+ * con control de versiones y rastro en el historial del repositorio; nunca por
+ * un clic de UI sin rastro. El modelo lo refuerza con `PreservesHistoricalData`.
+ */
 class PercentileTableResource extends Resource
 {
     protected static ?string $model = PercentileTable::class;
@@ -34,27 +43,32 @@ class PercentileTableResource extends Resource
 
     public static function canViewAny(): bool
     {
-        return Auth::user()?->role === 'admin';
+        return in_array(Auth::user()?->role, ['admin', 'evaluador'], true);
     }
 
+    /*
+     * Alta, edición y borrado están cerrados para todos los roles (ver el
+     * comentario de la clase): el baremo se cambia por seeder o migración, nunca
+     * desde el panel.
+     */
     public static function canCreate(): bool
     {
-        return Auth::user()?->role === 'admin';
+        return false;
     }
 
     public static function canEdit(Model $record): bool
     {
-        return Auth::user()?->role === 'admin';
+        return false;
     }
 
     public static function canDelete(Model $record): bool
     {
-        return Auth::user()?->role === 'admin';
+        return false;
     }
 
     public static function canDeleteAny(): bool
     {
-        return Auth::user()?->role === 'admin';
+        return false;
     }
 
     public static function form(Schema $schema): Schema

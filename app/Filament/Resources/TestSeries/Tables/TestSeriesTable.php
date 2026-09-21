@@ -2,7 +2,6 @@
 
 namespace App\Filament\Resources\TestSeries\Tables;
 
-use Filament\Actions\EditAction;
 use Filament\Actions\ViewAction;
 use Filament\Tables\Columns\IconColumn;
 use Filament\Tables\Columns\TextColumn;
@@ -66,7 +65,8 @@ class TestSeriesTable
                     ->native(false),
             ])
             ->recordActions([
-                EditAction::make(),
+                // Solo consulta: la serie es instrumento normalizado y no se
+                // modifica desde el panel (ver TestSeriesResource).
                 ViewAction::make(),
             ])
             ->toolbarActions([

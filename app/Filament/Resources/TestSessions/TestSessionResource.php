@@ -41,7 +41,7 @@ class TestSessionResource extends Resource
 
     public static function canViewAny(): bool
     {
-        return in_array(Auth::user()?->role, ['admin', 'reporter'], true);
+        return in_array(Auth::user()?->role, ['admin', 'reporter', 'evaluador'], true);
     }
 
     public static function canCreate(): bool

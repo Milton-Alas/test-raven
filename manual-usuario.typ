@@ -282,17 +282,23 @@ Pulsa *"Cerrar Sesión"* para finalizar. Tus datos y resultados quedan almacenad
 == Acceso al Panel Administrativo
 1. Navega a `/admin`.
 2. Inicia sesión con tu *usuario administrativo* (proveído por TI).
-3. Solo usuarios con rol `admin` o `reporter` pueden acceder.
+3. Solo usuarios con rol `admin`, `reporter` o `evaluador` pueden acceder.
 
 == Roles y Permisos
 
 #make-table(
   ("Rol", "Permisos"),
   (
-    "admin", "Acceso total: ver/editar/eliminar candidatos, ver/exportar resultados, gestionar usuarios admin, dashboard.",
-    "reporter", "Solo lectura: listar candidatos, listar resultados, exportar Excel/CSV/PDF. *No* puede editar, eliminar ni gestionar usuarios."
+    "admin", "Acceso total: ver/editar/eliminar candidatos, ver/exportar resultados, gestionar usuarios del panel, dashboard.",
+    "reporter", "Solo lectura: listar candidatos, listar resultados, exportar Excel/CSV/PDF. *No* puede editar, eliminar ni gestionar usuarios.",
+    "evaluador", "Solo lectura de las evaluaciones (candidatos, sesiones y resultados) y del instrumento (reactivos, series, baremos y rangos diagnósticos). Puede descargar el informe PDF individual; *no* tiene exportación masiva a Excel/CSV ni acceso a usuarios."
   )
 )
+
+*El instrumento es de solo lectura.* Las series, los reactivos, el baremo y los rangos diagnósticos se
+consultan desde el panel, pero ningún rol —tampoco `admin`— puede crearlos, modificarlos ni borrarlos
+ahí: determinan el puntaje y el diagnóstico de los tests ya rendidos, así que cualquier cambio se hace
+por seeder o migración, con control de versiones y rastro.
 
 == Dashboard Principal
 Al entrar verás widgets con *KPIs clave*:
@@ -492,7 +498,7 @@ El sistema verifica que el *perfil de scores por serie* sea coherente con el *pu
 == Administradores
 
 === "No veo candidatos en el panel"
-- Verifica tu rol: `admin` o `reporter`.
+- Verifica tu rol: `admin`, `reporter` o `evaluador`.
 - Revisa filtros activos (pestaña "Pendientes" oculta completados).
 - Ejecuta `php artisan filament:upgrade` si actualizaste Filament.
 

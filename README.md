@@ -55,7 +55,7 @@ descargar su informe.
 | Vite | 8 | |
 | Tailwind CSS | 4 | |
 | DomPDF | 3 | informes en PDF |
-| PHPUnit | 11 | 110 pruebas |
+| PHPUnit | 11 | 140 pruebas |
 
 **Extensiones de PHP necesarias:** `intl` (Filament usa `Number::format`), `gd` (DomPDF incrusta el
 logo del informe) y `zip` (exportaciones a Excel vía `openspout`). Están declaradas en
@@ -74,7 +74,7 @@ app/
 ├── Filament/             Panel administrativo
 │   ├── Resources/        8 recursos (ver abajo)
 │   ├── Widgets/          5 widgets del tablero
-│   └── Support/          HistoricalContent (reglas de interfaz del banco de ítems)
+│   └── Support/          HistoricalContent (reglas de interfaz del instrumento)
 ├── Http/
 │   ├── Controllers/      CandidateAuth · Test · TestInstructions · TestResult
 │   └── Middleware/       CandidateAuth · EnsureTestNotCompleted · RedirectIfAuthenticated
@@ -154,48 +154,57 @@ Disponible en `/admin`, con autenticación propia (guard `web`) y autorización 
 
 | Rol | Alcance |
 | --- | --- |
-| `admin` | Todo: consulta, administración del instrumento, usuarios y exportaciones |
+| `admin` | Todo: consulta, operación diaria (candidatos y resultados), usuarios y exportaciones |
 | `reporter` | Solo consulta de candidatos, sesiones y resultados, con exportación auditada |
+| `evaluador` | Solo consulta de las evaluaciones y del instrumento, más el informe PDF individual |
+
+El instrumento (reactivos, series, baremos y rangos diagnósticos) es **de solo lectura para los tres
+roles**, `admin` incluido: no es configuración operativa, es el instrumento normalizado con el que se
+calcularon los resultados ya emitidos, y cualquier cambio real entra por seeder o migración, con
+control de versiones y rastro.
 
 ### Recursos
 
-| Recurso | Para qué sirve | Reporter |
-| --- | --- | --- |
-| **Candidatos** | Consulta, reseteo de contraseña, exportación CSV | consulta |
-| **Sesiones** | Seguimiento del proceso (solo lectura, incluido el admin) | consulta |
-| **Resultados** | Puntajes, percentil, diagnóstico, informe PDF y exportación a Excel/CSV | consulta + exportación |
-| **Reactivos** | Consulta del banco de 60 preguntas | sin acceso |
-| **Series** | Consulta de las 5 series | sin acceso |
-| **Baremos** | Tablas de percentil por edad | sin acceso |
-| **Rangos diagnósticos** | Interpretación de los rangos I–V | sin acceso |
-| **Usuarios** | Alta y roles de administradores | sin acceso |
+| Recurso | Para qué sirve | Reporter | Evaluador |
+| --- | --- | --- | --- |
+| **Candidatos** | Consulta, reseteo de contraseña (solo admin) y exportación CSV | consulta + exportación | consulta |
+| **Sesiones** | Seguimiento del proceso (solo lectura, incluido el admin) | consulta | consulta |
+| **Resultados** | Puntajes, percentil, diagnóstico, informe PDF y exportación a Excel/CSV | consulta + exportación | consulta + informe PDF |
+| **Reactivos** | Consulta del banco de 60 preguntas (solo lectura) | sin acceso | consulta |
+| **Series** | Consulta de las 5 series (solo lectura) | sin acceso | consulta |
+| **Baremos** | Tablas de percentil por edad (solo lectura) | sin acceso | consulta |
+| **Rangos diagnósticos** | Interpretación de los rangos I–V (solo lectura) | sin acceso | consulta |
+| **Usuarios** | Alta y roles del personal del panel (`admin`, `reporter`, `evaluador`) | sin acceso | sin acceso |
 
 Cada recurso responde a la pregunta *«¿puede este rol hacer esto?»* con sus propios métodos
 `canViewAny` / `canCreate` / `canEdit` / `canDelete` / `canForceDeleteAny` / `canRestoreAny`. No hay
 policies registradas, así que **esos métodos son la única fuente de verdad** de la autorización.
+Las exportaciones masivas tienen su propio método (`canExport()` en Candidatos y Resultados): el rol
+`evaluador` no las tiene.
 
 ### Tablero
 
 Cinco widgets: resumen de indicadores, tendencia de tests por día, distribución por rango
 diagnóstico, gráfico de resultados y últimas sesiones.
 
-### El banco de ítems es de solo lectura
+### El instrumento es de solo lectura
 
-Las series, reactivos, opciones y tablas normativas **no se pueden borrar ni reescribir**, y la
-interfaz lo refleja: no hay acciones de borrado y los campos de contenido se muestran deshabilitados
-al editar. La razón es concreta:
+Las series, reactivos, baremos y rangos diagnósticos **no se pueden crear, editar ni borrar desde el
+panel**, para ningún rol: no hay botón de alta, ni acción de edición, ni de borrado, y las páginas de
+`create` y `edit` responden 403. La razón es doble:
 
-> `test_answers.test_question_id` tiene **borrado en cascada**. Eliminar un reactivo borraría las
-> respuestas de todos los candidatos que lo respondieron, y un recálculo posterior daría un puntaje
+> El contenido del instrumento determina el puntaje, el percentil y el diagnóstico de tests ya
+> rendidos. Un cambio hecho a mano desde la interfaz dejaría resultados anteriores calculados con otra
+> norma, sin rastro de quién lo cambió ni por qué.
+>
+> Además, `test_answers.test_question_id` tiene **borrado en cascada**. Eliminar un reactivo borraría
+> las respuestas de todos los candidatos que lo respondieron, y un recálculo posterior daría un puntaje
 > sobre menos ítems (por ejemplo 48 en vez de 60) sin que nadie lo note.
 
-Lo que **sí** se puede hacer:
-
-- **Desactivar** un ítem (`is_active`), que lo retira de tests nuevos sin destruir la historia.
-- **Crear** ítems nuevos, mientras no haya una sesión de test en curso.
-
-La protección está en los modelos (`PreservesHistoricalData`), no solo en la interfaz, así que también
-cubre `artisan tinker` y cualquier código futuro.
+Los cambios reales se hacen por **seeder o migración**, con control de versiones en el historial del
+repositorio. La protección está en tres capas: la autorización de cada Resource (`canCreate()` y
+`canEdit()` devuelven `false`), la interfaz (sin acciones que las invoquen) y los modelos
+(`PreservesHistoricalData`), que además cubren `artisan tinker` y cualquier código futuro.
 
 ---
 
@@ -344,7 +353,7 @@ php artisan test --filter=Rnf09       # confidencialidad y retención
 php artisan test --filter=TestBank    # integridad del instrumento
 ```
 
-**110 pruebas, 424 aserciones.** Organizadas por lo que protegen:
+**140 pruebas, 618 aserciones.** Organizadas por lo que protegen:
 
 | Archivo | Qué garantiza |
 | --- | --- |
@@ -352,7 +361,8 @@ php artisan test --filter=TestBank    # integridad del instrumento
 | `Rnf0903AccessSeparationTest` | Candidato y administración no se cruzan; los datos psicométricos requieren rol |
 | `Rnf09RetentionTest` | La retención disocia/suprime solo lo vencido, y cada operación queda registrada |
 | `TestBankIntegrityTest` | No se puede borrar ni reescribir el contenido del test |
-| `TestBankUiRulesTest` | La interfaz refleja esas reglas (sin botones de borrado, campos en consulta) |
+| `TestBankUiRulesTest` | La interfaz del instrumento es de solo lectura: sin alta, edición ni borrado |
+| `PanelRolePermissionsTest` | Matriz de permisos de `admin`, `reporter` y `evaluador` sobre los ocho recursos |
 | `TestAssetsIntegrityTest` | Las láminas que la base referencia existen en el repositorio |
 | `CandidateRegistrationThrottleTest` / `CandidateLoginThrottleTest` | Límites de intentos en registro y login |
 | `CandidatePasswordResetTest` | Reseteo por administrador con auditoría y sin filtrar credenciales |
@@ -371,7 +381,7 @@ php artisan test --filter=TestBank    # integridad del instrumento
 
 ### Estado actual
 
-109 pruebas en verde y **1 en rojo**: `Tests\Feature\ExampleTest`, un ejemplo del esqueleto de Laravel
+139 pruebas en verde y **1 en rojo**: `Tests\Feature\ExampleTest`, un ejemplo del esqueleto de Laravel
 que espera un 200 en `/` y recibe la redirección al login. No cubre funcionalidad del sistema.
 
 ---

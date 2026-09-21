@@ -33,11 +33,13 @@ class UsersTable
                 ->icon(fn (User $record): string => match ($record->role) {
                     'admin' => 'heroicon-o-shield-check',
                     'reporter' => 'heroicon-o-document-chart-bar',
+                    'evaluador' => 'heroicon-o-clipboard-document-check',
                     default => 'heroicon-o-user',
                 })
                 ->iconColor(fn (User $record): string => match ($record->role) {
                     'admin' => 'danger',
                     'reporter' => 'info',
+                    'evaluador' => 'warning',
                     default => 'gray',
                 }),
 
@@ -54,6 +56,7 @@ class UsersTable
                     ->color(fn (User $record): string => match ($record->role) {
                         'admin' => 'danger',
                         'reporter' => 'info',
+                        'evaluador' => 'warning',
                         default => 'gray',
                     }),
 
