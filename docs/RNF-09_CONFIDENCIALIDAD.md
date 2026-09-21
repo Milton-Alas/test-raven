@@ -17,7 +17,7 @@ una descripción de intenciones.
 | 09.02 Protección de credenciales | Implementado | 3 (reseteo por admin) + 1 integrada en 09.01 |
 | 09.03 Separación de acceso candidato/administración | Implementado | 8 |
 | 09.04 Retención y supresión/disociación | Implementado | 8 |
-| 09.05 Aplicación automática y registro | Implementado | 4 |
+| 09.05 Aplicación automática y registro | Implementado | 14 |
 
 Los tres primeros ya estaban cubiertos por el diseño original del sistema; 09.01 se formalizó con
 cifrado real y 09.04/09.05 se construyeron en esta etapa.
@@ -233,7 +233,7 @@ zonas grises ante una auditoría:
 
 ### Pruebas
 
-`tests/Feature/Rnf09RetentionTest.php` — 8 pruebas que cubren 09.04 (las otras 9 cubren 09.05):
+`tests/Feature/Rnf09RetentionTest.php` — 8 pruebas que cubren 09.04 (las otras 14 cubren 09.05):
 
 - Disocia **solo** lo que superó su plazo; lo reciente no se toca.
 - La disociación elimina **todos** los identificadores directos (nombre, correo, DUI cifrado, índice,
@@ -254,17 +254,26 @@ zonas grises ante una auditoría:
 
 ### Cómo se cumple
 
-- **Ejecución automática:** tarea programada en `routes/console.php`, a diario a las 03:00, con
-  `withoutOverlapping()` y `onOneServer()`.
+- **Ejecución automática:** tarea programada en `routes/console.php` con **periodicidad configurable**
+  (`config/retention.php`, sección `schedule`: `RETENCION_SCHEDULE_ACTIVA`, `_FRECUENCIA` —`daily`,
+  `weekly`, `monthly`, `quarterly` o `yearly`—, `_HORA` y, según la frecuencia, `_DIA_SEMANA`,
+  `_DIA_MES` y `_MES`), con `withoutOverlapping()` y `onOneServer()`. Por defecto, a diario a las
+  03:00; el ciclo del proceso es el año escolar, así que la institución puede programarla una vez al
+  año sin tocar código.
   Requiere el planificador activo en el servidor:
   `* * * * * cd /ruta && php artisan schedule:run >> /dev/null 2>&1`
 - **Ejecución manual:** `php artisan retention:apply` con `--categoria=`, `--dry-run` y `--force`.
+- **Modo simulación programado:** `RETENCION_SCHEDULE_SIMULACION=true` hace que la tarea programada
+  ejecute `--dry-run`: la misma lógica sin modificar nada, con constancia en `retention_logs`. Sirve
+  para desplegar en staging y ver el alcance real de la política antes de activarla.
+- **La tarea se marca como automática:** el planificador invoca el comando con `--schedule`, de modo que
+  `retention_logs.origen` distingue la ejecución automática de la manual.
 - **Nombre y evidencia (pendiente si el criterio de aceptación es literal):** el requisito se formuló
   también como un comando `raven:purge-expired` que registrara la ejecución en `activity_logs` con el
-  evento `retention_purge`. **Ninguno de los dos existe.** La funcionalidad está cubierta por
-  `retention:apply` y la evidencia de cada ejecución es `retention_logs`, que queda fuera de la propia
-  política (los `activity_logs` de la categoría `actividad` sí se suprimen, así que un evento ahí sería
-  más efímero como prueba).
+  evento `retention_purge`. **Ninguno de los dos existe**: la aplicación es `retention:apply` —con la
+  periodicidad ya configurable y `--dry-run`— y la evidencia de cada ejecución es `retention_logs`, que
+  queda fuera de la propia política (los `activity_logs` de la categoría `actividad` sí se suprimen, así
+  que un evento ahí sería más efímero como prueba).
 - **Registro de las operaciones:** tabla `retention_logs`, con una fila por categoría y ejecución:
 
   | Campo | Contenido |
@@ -272,7 +281,7 @@ zonas grises ante una auditoría:
   | `categoria`, `accion` | Qué política se aplicó |
   | `dias_retencion`, `fecha_corte` | Bajo qué plazo y con qué fecha de corte |
   | `registros_afectados`, `detalle` | Alcance real de la operación |
-  | `origen` | Cómo se ejecutó. Hoy el comando registra siempre `manual`, también cuando lo dispara el planificador (desviación conocida) |
+  | `origen` | Cómo se ejecutó: `schedule` (automática) o `manual` |
   | `simulacion` | Si fue una ejecución sin efectos |
   | `resultado`, `error`, `duracion_ms` | Resultado y diagnóstico |
 
@@ -293,7 +302,11 @@ revisar el alcance antes de aplicarlo y para demostrar la política sin ejecutar
 - El comando aplica la retención y reporta; en simulación no toca datos.
 - El comando acepta una categoría concreta y rechaza una inexistente.
 - El comando respeta el interruptor general (`RETENCION_ACTIVA=false`).
-- **La tarea está programada**: se comprueba la expresión cron real (`0 3 * * *`).
+- **La tarea está programada** por defecto: se comprueba la expresión cron real (`0 3 * * *`) y que se
+  marca como automática (`--schedule`).
+- **La periodicidad es configurable:** se comprueban las cinco frecuencias (`daily`, `weekly`,
+  `monthly`, `quarterly`, `yearly`) con su expresión cron, que la tarea puede desactivarse y que el
+  modo simulación programado añade `--dry-run`.
 
 ---
 

@@ -8,6 +8,7 @@ use App\Models\RetentionLog;
 use App\Models\TestResult;
 use App\Models\TestSession;
 use App\Services\RetentionService;
+use App\Support\RetentionSchedule;
 use Illuminate\Console\Scheduling\Schedule;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Facades\DB;
@@ -343,7 +344,7 @@ class Rnf09RetentionTest extends TestCase
         $this->assertSame(0, RetentionLog::count());
     }
 
-    public function test_la_retencion_esta_programada_diariamente(): void
+    public function test_la_retencion_esta_programada_diariamente_por_defecto(): void
     {
         $eventos = collect(app(Schedule::class)->events())
             ->filter(fn ($evento): bool => str_contains($evento->command ?? '', 'retention:apply'));
@@ -351,6 +352,77 @@ class Rnf09RetentionTest extends TestCase
         $this->assertCount(1, $eventos, 'La aplicación automática debe estar programada (RNF-09.05).');
 
         $evento = $eventos->first();
-        $this->assertSame('0 3 * * *', $evento->expression, 'Debe ejecutarse a diario de madrugada.');
+        $this->assertSame('0 3 * * *', $evento->expression, 'Por defecto debe ejecutarse a diario de madrugada.');
+        $this->assertStringContainsString(
+            '--schedule',
+            $evento->command,
+            'La tarea programada debe marcarse como automática en la evidencia.'
+        );
+    }
+
+    // ------------------------------- periodicidad configurable (RNF-09.05)
+
+    public function test_la_periodicidad_de_la_retencion_es_configurable(): void
+    {
+        $casos = [
+            'daily' => [['frecuencia' => 'daily', 'hora' => '05:15'], '15 5 * * *'],
+            'weekly' => [['frecuencia' => 'weekly', 'dia_semana' => 3, 'hora' => '05:15'], '15 5 * * 3'],
+            'monthly' => [['frecuencia' => 'monthly', 'dia_mes' => 10, 'hora' => '05:15'], '15 5 10 * *'],
+            'quarterly' => [['frecuencia' => 'quarterly', 'dia_mes' => 10, 'hora' => '05:15'], '15 5 10 1-12/3 *'],
+            'yearly' => [['frecuencia' => 'yearly', 'mes' => 12, 'dia_mes' => 20, 'hora' => '05:15'], '15 5 20 12 *'],
+        ];
+
+        foreach ($casos as $nombre => [$configuracion, $expresionEsperada]) {
+            $evento = RetentionSchedule::register(new Schedule, $configuracion + ['activa' => true]);
+
+            $this->assertNotNull($evento, "La frecuencia {$nombre} debería programar la tarea.");
+            $this->assertSame($expresionEsperada, $evento->expression, "Frecuencia {$nombre}.");
+        }
+    }
+
+    public function test_la_tarea_programada_puede_desactivarse(): void
+    {
+        $this->assertNull(
+            RetentionSchedule::register(new Schedule, ['activa' => false]),
+            'Con la programación desactivada solo queda la ejecución manual.'
+        );
+
+        // Y con la configuración por defecto del proyecto, sigue programada.
+        $this->assertNotNull(RetentionSchedule::register(new Schedule, config('retention.schedule')));
+    }
+
+    public function test_la_tarea_programada_puede_ejecutar_la_retencion_en_simulacion(): void
+    {
+        $evento = RetentionSchedule::register(new Schedule, ['activa' => true, 'simulacion' => true]);
+
+        $this->assertNotNull($evento);
+        $this->assertStringContainsString('--schedule', $evento->command);
+        $this->assertStringContainsString('--dry-run', $evento->command);
+    }
+
+    public function test_la_ejecucion_automatica_se_registra_como_tal(): void
+    {
+        $this->candidato(['created_at' => now()->subDays(2000)]);
+
+        $this->artisan('retention:apply --schedule')->assertSuccessful();
+
+        $this->assertSame(
+            count(config('retention.categorias')),
+            RetentionLog::where('origen', 'schedule')->count()
+        );
+        $this->assertSame(0, RetentionLog::where('origen', 'manual')->count());
+    }
+
+    public function test_la_ejecucion_manual_se_sigue_registrando_como_manual(): void
+    {
+        $this->candidato(['created_at' => now()->subDays(2000)]);
+
+        $this->artisan('retention:apply')->assertSuccessful();
+
+        $this->assertSame(0, RetentionLog::where('origen', 'schedule')->count());
+        $this->assertSame(
+            count(config('retention.categorias')),
+            RetentionLog::where('origen', 'manual')->count()
+        );
     }
 }

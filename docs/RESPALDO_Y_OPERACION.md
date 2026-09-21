@@ -44,6 +44,37 @@ php artisan retention:apply --categoria=tecnico --dry-run
 real, pero no escribe cambios. **Sí deja registro** en `retention_logs` con `simulacion = true`, para
 poder demostrar que la política se evaluó sin aplicarla.
 
+**Cuándo se ejecuta sola (periodicidad configurable)**
+
+El planificador aplica la política con la frecuencia que fije el entorno, sin tocar código:
+
+```env
+RETENCION_SCHEDULE_ACTIVA=true          # false deja solo la ejecución manual
+RETENCION_SCHEDULE_FRECUENCIA=daily     # daily | weekly | monthly | quarterly | yearly
+RETENCION_SCHEDULE_HORA=03:00
+RETENCION_SCHEDULE_DIA_SEMANA=1         # solo con weekly (1 = lunes)
+RETENCION_SCHEDULE_DIA_MES=1            # con monthly, quarterly y yearly
+RETENCION_SCHEDULE_MES=1                # solo con yearly
+RETENCION_SCHEDULE_SIMULACION=false     # true: la tarea programada ejecuta --dry-run
+```
+
+El ciclo del proceso es el año escolar —los aspirantes a profesorado rinden el test una vez por año—,
+así que una configuración razonable para producción es anual, después del cierre de la convocatoria:
+
+```env
+RETENCION_SCHEDULE_FRECUENCIA=yearly
+RETENCION_SCHEDULE_MES=12
+RETENCION_SCHEDULE_DIA_MES=15
+RETENCION_SCHEDULE_HORA=02:00
+```
+
+Para desplegar en staging y ver el alcance real antes de activarla, `RETENCION_SCHEDULE_SIMULACION=true`
+deja la tarea programada en modo `--dry-run`. Los cambios en estas variables se aplican en el siguiente
+`schedule:run`, sin volver a desplegar.
+
+En `retention_logs`, el campo `origen` distingue la ejecución automática (`schedule`, la que lanza el
+planificador) de la manual (`manual`) y `simulacion` marca las que no modificaron nada.
+
 ### Respaldo de la clave de cifrado
 
 ```bash
@@ -211,7 +242,8 @@ SHELL=/bin/bash
 PATH=/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin
 MAILTO=ti@ues.edu.sv
 
-# Planificador de Laravel: obligatorio. Activa la retención automática (03:00).
+# Planificador de Laravel: obligatorio. Activa la retención automática con la
+# periodicidad configurada en RETENCION_SCHEDULE_* (por defecto, 03:00).
 * * * * * www-data cd /var/www/test-raven && php artisan schedule:run >> /dev/null 2>&1
 
 # Respaldo diario (base + clave) a un volumen externo, 02:30
@@ -235,17 +267,19 @@ MAILTO=ti@ues.edu.sv
 ### Verificar que el cron está funcionando
 
 ```bash
-php artisan schedule:list          # debe mostrar retention:apply a las 03:00
+php artisan schedule:list          # debe mostrar retention:apply en la frecuencia y hora configuradas
 php artisan schedule:run           # ejecuta lo que esté pendiente ahora
 ```
 
-Y al día siguiente, comprobar que quedó registro:
+Y cuando corresponda la ejecución, comprobar que quedó registro:
 
 ```bash
 php artisan tinker --execute="App\Models\RetentionLog::where('origen','schedule')->latest()->first()"
 ```
 
-Si devuelve `null` después de las 03:00, el cron no está corriendo.
+Si devuelve `null` una vez pasada la hora configurada (`RETENCION_SCHEDULE_HORA`), el cron no está
+corriendo. Ojo con la frecuencia: con `monthly`, `quarterly` o `yearly` el registro aparece solo en la
+fecha programada, así que la comprobación se hace ese día.
 
 ---
 

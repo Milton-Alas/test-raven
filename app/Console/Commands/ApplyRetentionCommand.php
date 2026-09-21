@@ -13,13 +13,17 @@ use Illuminate\Console\Command;
  * ejecución real pero sin escribir cambios. Sirve para dos cosas: revisar el
  * alcance antes de aplicarlo y dejar constancia, en el registro, de que una
  * ejecución no modificó nada.
+ *
+ * El planificador invoca el comando con `--schedule` (ver `RetentionSchedule`), de
+ * modo que `retention_logs.origen` distinga la ejecución automática de la manual.
  */
 class ApplyRetentionCommand extends Command
 {
     protected $signature = 'retention:apply
                             {--categoria= : Aplica solo esta categoría}
                             {--dry-run : Muestra qué se haría sin modificar nada}
-                            {--force : Ejecuta aunque la retención esté desactivada en la configuración}';
+                            {--force : Ejecuta aunque la retención esté desactivada en la configuración}
+                            {--schedule : Marca la ejecución como automática (lo usa el planificador)}';
 
     protected $description = 'Aplica las políticas de retención: disocia o suprime los datos que superaron su plazo';
 
@@ -43,7 +47,7 @@ class ApplyRetentionCommand extends Command
             $resultados = $retencion->aplicar(
                 categoria: $categoria,
                 simulacion: $simulacion,
-                origen: 'manual',
+                origen: $this->option('schedule') ? 'schedule' : 'manual',
             );
         } catch (\InvalidArgumentException $e) {
             $this->error($e->getMessage());

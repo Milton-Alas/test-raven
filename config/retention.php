@@ -2,6 +2,7 @@
 
 /**
  * RNF-09.04 — Políticas de retención de datos.
+ * RNF-09.05 — Aplicación automática y configurable.
  *
  * Cada categoría declara cuántos días conserva la información y qué se hace al
  * vencer el plazo:
@@ -36,6 +37,40 @@ return [
     |
     */
     'enabled' => env('RETENCION_ACTIVA', true),
+
+    /*
+    |--------------------------------------------------------------------------
+    | Programación de la aplicación automática (RNF-09.05)
+    |--------------------------------------------------------------------------
+    |
+    | Cuándo se ejecuta `retention:apply` lo decide la institución, no el código:
+    | la frecuencia y la hora salen de aquí, así que se cambian en el `.env` y se
+    | aplican en el siguiente `schedule:run`, sin volver a desplegar.
+    |
+    | El ciclo real del proceso es el año escolar: los aspirantes a profesorado
+    | rinden el test una vez por año, así que la purga puede programarse una sola
+    | vez al año, después del cierre de la convocatoria, en lugar de a diario.
+    |
+    | 'frecuencia' acepta 'daily', 'weekly', 'monthly', 'quarterly' y 'yearly'.
+    | Según la frecuencia se usan 'dia_semana' (weekly), 'dia_mes' (monthly,
+    | quarterly y yearly) y 'mes' (yearly).
+    |
+    | 'activa' => false desregistra la tarea: queda solo la ejecución manual.
+    | 'simulacion' => true hace que la tarea programada ejecute `--dry-run`:
+    | misma lógica, sin modificar nada, y deja constancia en `retention_logs` con
+    | `simulacion = true`. Sirve para desplegar en staging y ver el alcance real de
+    | la política antes de activarla.
+    |
+    */
+    'schedule' => [
+        'activa' => env('RETENCION_SCHEDULE_ACTIVA', true),
+        'frecuencia' => env('RETENCION_SCHEDULE_FRECUENCIA', 'daily'),
+        'hora' => env('RETENCION_SCHEDULE_HORA', '03:00'),
+        'dia_semana' => env('RETENCION_SCHEDULE_DIA_SEMANA', 1),
+        'dia_mes' => env('RETENCION_SCHEDULE_DIA_MES', 1),
+        'mes' => env('RETENCION_SCHEDULE_MES', 1),
+        'simulacion' => env('RETENCION_SCHEDULE_SIMULACION', false),
+    ],
 
     /*
     |--------------------------------------------------------------------------

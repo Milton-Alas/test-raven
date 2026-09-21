@@ -55,7 +55,7 @@ descargar su informe.
 | Vite | 8 | |
 | Tailwind CSS | 4 | |
 | DomPDF | 3 | informes en PDF |
-| PHPUnit | 11 | 146 pruebas |
+| PHPUnit | 11 | 151 pruebas |
 
 **Extensiones de PHP necesarias:** `intl` (Filament usa `Number::format`), `gd` (DomPDF incrusta el
 logo del informe) y `zip` (exportaciones a Excel vía `openspout`). Están declaradas en
@@ -245,7 +245,8 @@ está en [`docs/RNF-09_CONFIDENCIALIDAD.md`](docs/RNF-09_CONFIDENCIALIDAD.md).
   nunca entran en el registro.
 - **Retención configurable:** cuatro categorías (personal, psicométrico, actividad, técnico) con
   plazo y acción (`disociar` / `suprimir`) ajustables por entorno.
-- **Aplicación automática:** tarea diaria que deja registro en `retention_logs`.
+- **Aplicación automática:** tarea programada con periodicidad configurable por entorno, que deja
+  registro en `retention_logs`.
 
 ### Cifrado en reposo del identificador
 
@@ -299,10 +300,20 @@ nivel educativo) y conserva el dato desagregado, que deja de ser atribuible a un
 psicométricos se disocian —no se suprimen— para no romper la serie histórica con la que se calibra el
 baremo. **Suprimir** elimina el dato por completo. El interruptor general es `RETENCION_ACTIVA`.
 
-La aplicación es `php artisan retention:apply`, también programada a diario por el planificador
-(`--dry-run` permite revisar el alcance sin modificar nada y `--categoria=` limita la ejecución a una
-sola). Cada ejecución queda como evidencia en `retention_logs`. Quedan fuera de la política el banco de
-ítems, las cuentas del panel y las copias de seguridad.
+La aplicación es `php artisan retention:apply` (`--dry-run` revisa el alcance sin modificar nada,
+`--categoria=` limita la ejecución a una sola y `--force` la ejecuta aunque el interruptor general esté
+apagado). Cada ejecución queda como evidencia en `retention_logs`, con `origen` (`schedule` cuando la
+lanza el planificador, `manual` cuando la lanza una persona) y `simulacion`. Quedan fuera de la política
+el banco de ítems, las cuentas del panel y las copias de seguridad.
+
+**Cuándo se ejecuta lo decide la institución.** La periodicidad es configurable por variable de entorno,
+sin volver a desplegar: `RETENCION_SCHEDULE_FRECUENCIA` acepta `daily`, `weekly`, `monthly`, `quarterly`
+o `yearly`, con `RETENCION_SCHEDULE_HORA` y —según la frecuencia— `_DIA_SEMANA`, `_DIA_MES` y `_MES`. El
+ciclo del proceso es el **año escolar** (los aspirantes a profesorado rinden el test una vez por año),
+así que la purga puede programarse una sola vez al año, después del cierre de la convocatoria, en lugar
+de a diario. Además, `RETENCION_SCHEDULE_ACTIVA=false` deja solo la ejecución manual y
+`RETENCION_SCHEDULE_SIMULACION=true` hace que la tarea programada ejecute `--dry-run` —misma lógica, sin
+modificar nada—, útil para ver el alcance real en staging antes de activarla.
 
 > **Advertencia operativa:** el `APP_KEY` cifra los identificadores. Si se pierde, los datos cifrados
 > son irrecuperables. Debe respaldarse junto con la base — ver
@@ -415,13 +426,13 @@ php artisan test --filter=Rnf09       # confidencialidad y retención
 php artisan test --filter=TestBank    # integridad del instrumento
 ```
 
-**146 pruebas, 667 aserciones.** Organizadas por lo que protegen:
+**151 pruebas, 689 aserciones.** Organizadas por lo que protegen:
 
 | Archivo | Qué garantiza |
 | --- | --- |
 | `Rnf0901DuiNitEncryptionTest` | El DUI/NIT no se guarda en claro; el índice es HMAC, no un hash simple; la búsqueda no descifra |
 | `Rnf0903AccessSeparationTest` | Candidato y administración no se cruzan; los datos psicométricos requieren rol |
-| `Rnf09RetentionTest` | La retención disocia/suprime solo lo vencido, y cada operación queda registrada |
+| `Rnf09RetentionTest` | La retención disocia/suprime solo lo vencido, cada operación queda registrada y la periodicidad programada es configurable |
 | `TestBankIntegrityTest` | No se puede borrar ni reescribir el contenido del test |
 | `TestBankUiRulesTest` | La interfaz del instrumento es de solo lectura: sin alta, edición ni borrado |
 | `PanelRolePermissionsTest` | Matriz de permisos de `admin`, `reporter` y `evaluador` sobre los ocho recursos |
@@ -444,7 +455,7 @@ php artisan test --filter=TestBank    # integridad del instrumento
 
 ### Estado actual
 
-145 pruebas en verde y **1 en rojo**: `Tests\Feature\ExampleTest`, un ejemplo del esqueleto de Laravel
+150 pruebas en verde y **1 en rojo**: `Tests\Feature\ExampleTest`, un ejemplo del esqueleto de Laravel
 que espera un 200 en `/` y recibe la redirección al login. No cubre funcionalidad del sistema.
 
 ---

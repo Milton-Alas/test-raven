@@ -433,22 +433,28 @@ _Estados utilizados: Solventado | Solventado en código | A cargo de la UTI | Ri
     del test o el cierre de la convocatoria.* Si la facultad lo requiere, el cambio se limita a la
     consulta de `RetentionService::disociarCandidatos()` para usar `test_completed_at` cuando exista.
     Esfuerzo bajo.
-- *Aplicación automática:* `php artisan retention:apply` (admite `--dry-run`, que recorre la misma
-  lógica sin escribir y deja constancia en `retention_logs` con `simulacion = true`). La tarea está
-  programada a diario a las 03:00 en `routes/console.php`, con `withoutOverlapping()` y `onOneServer()`.
-  Respeta el interruptor `RETENCION_ACTIVA`. Requiere el planificador de Laravel activo en el servidor
+- *Aplicación automática y configurable:* `php artisan retention:apply` (admite `--dry-run`, que recorre
+  la misma lógica sin escribir y deja constancia en `retention_logs` con `simulacion = true`). La tarea
+  se registra en `routes/console.php` con la **periodicidad configurable** por variable de entorno
+  (`RETENCION_SCHEDULE_*`: frecuencia `daily`, `weekly`, `monthly`, `quarterly` o `yearly`, hora y
+  día/mes según la frecuencia; por defecto, a diario a las 03:00), con `withoutOverlapping()` y
+  `onOneServer()`. El ciclo del proceso es el año escolar —los aspirantes a profesorado rinden el test
+  una vez por año—, así que la purga puede programarse una sola vez al año, después del cierre, sin
+  tocar código. `RETENCION_SCHEDULE_ACTIVA=false` deja solo la ejecución manual, y
+  `RETENCION_SCHEDULE_SIMULACION=true` hace que la tarea programada ejecute `--dry-run`. Respeta el
+  interruptor `RETENCION_ACTIVA` y requiere el planificador de Laravel activo en el servidor
   (ver `docs/RESPALDO_Y_OPERACION.md`).
 - *Pendiente de implementación (nombre y evidencia):* el requisito se formuló también como un comando
   `raven:purge-expired` que registrara su ejecución en `activity_logs` con el evento `retention_purge`.
   **No existe ninguno de los dos.** La funcionalidad —aplicar la política, `--dry-run` y ejecución
-  programada— está cubierta por `retention:apply`, y su evidencia vive en `retention_logs` (una fila por
-  categoría y ejecución), que además queda fuera de la propia política. Si el criterio de aceptación
-  exige el nombre y el evento literales, el alias del comando son unas pocas líneas y el evento se
-  escribe con `ActivityLogService::log()`; la salvedad es que la política suprime los `activity_logs`
-  vencidos (categoría `actividad`), así que esa evidencia sería más efímera que `retention_logs`.
-  Dos detalles menores, verificados en el código: la hora de ejecución está fija en
-  `routes/console.php` (03:00, no configurable por entorno) y `retention_logs.origen` registra siempre
-  `manual`, también cuando lo dispara el planificador.
+  programada con periodicidad configurable— está cubierta por `retention:apply`, y su evidencia vive en
+  `retention_logs` (una fila por categoría y ejecución), que además queda fuera de la propia política.
+  Si el criterio de aceptación exige el nombre y el evento literales, el alias del comando son unas
+  pocas líneas y el evento se escribe con `ActivityLogService::log()`; la salvedad es que la política
+  suprime los `activity_logs` vencidos (categoría `actividad`), así que esa evidencia sería más efímera
+  que `retention_logs`. Los dos detalles que este informe anotaba como menores quedaron corregidos en el
+  mismo cambio: la periodicidad ya no está fija a las 03:00 y el planificador invoca el comando con
+  `--schedule`, de modo que `retention_logs.origen` distingue la ejecución automática de la manual.
 - *Cambio de plazos:* al modificar cualquiera de estas variables en `.env`, se debe ejecutar:
 
   ```bash
@@ -620,17 +626,17 @@ botón en producción. Comprobadas con `php -m` y `composer check-platform-reqs`
 = 7. Anexo — Evidencia de ejecución
 
 Las afirmaciones de este informe se apoyan en la suite de pruebas del proyecto, que se ejecuta con
-`php artisan test`. Estado al 2026-09-21 —última ejecución, en la rama de cierre—: *146 pruebas y 667
-aserciones: 145 en verde y 1 en rojo*. En la verificación inicial del informe (2026-09-20) eran 132
-pruebas en verde y 469 aserciones; la diferencia son las pruebas del rol `evaluador`, del instrumento de
-solo lectura y de la auditoría de cuentas.
+`php artisan test`. Estado al 2026-09-21 —última ejecución—: *151 pruebas y 689 aserciones: 150 en verde
+y 1 en rojo*. En la verificación inicial del informe (2026-09-20) eran 132 pruebas en verde y 469
+aserciones; la diferencia son las pruebas del rol `evaluador`, del instrumento de solo lectura, de la
+auditoría de cuentas y de la periodicidad configurable de la retención.
 
 #table(
   columns: (1.8fr, auto, 1fr),
   table.header([Área verificada], [Pruebas], [Archivo]),
   [Cifrado del identificador], [12], [`tests/Feature/Rnf0901DuiNitEncryptionTest.php`],
   [Separación de acceso candidato/administración], [8], [`tests/Feature/Rnf0903AccessSeparationTest.php`],
-  [Retención y su registro], [17], [`tests/Feature/Rnf09RetentionTest.php`],
+  [Retención y su registro], [22], [`tests/Feature/Rnf09RetentionTest.php`],
   [Integridad del banco de ítems], [13], [`tests/Feature/TestBankIntegrityTest.php`],
   [Instrumento de solo lectura en la interfaz], [3], [`tests/Feature/TestBankUiRulesTest.php`],
   [Matriz de permisos de los tres roles], [11], [`tests/Feature/PanelRolePermissionsTest.php`],

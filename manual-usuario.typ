@@ -621,8 +621,10 @@ las acciones se configuran por variable de entorno (`.env`), sin tocar código:
 
 *Disociar* borra los datos que identifican a la persona y conserva la información estadística;
 *suprimir* elimina el dato por completo. El interruptor general es `RETENCION_ACTIVA`. La aplicación es
-`php artisan retention:apply` —con `--dry-run` para revisar el alcance sin modificar nada—, programada
-a diario, y cada ejecución queda registrada como evidencia.
+`php artisan retention:apply` —con `--dry-run` para revisar el alcance sin modificar nada—, y *la
+periodicidad la configura la institución* (`RETENCION_SCHEDULE_*`: diaria, semanal, mensual, trimestral o
+anual, con su hora), así que puede alinearse con el año escolar: los aspirantes rinden el test una vez
+por año y la purga puede programarse después del cierre. Cada ejecución queda registrada como evidencia.
 
 #pagebreak()
 ---
