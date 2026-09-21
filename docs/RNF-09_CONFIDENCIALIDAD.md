@@ -62,8 +62,11 @@ una tabla precalculada en minutos y anularía el cifrado.
   previa a la creación del índice único: si dos candidatos compartieran identificador, la migración
   falla con un mensaje explícito en lugar de dejar la base a medias.
 - **El índice se recalcula en cada guardado**, así que nunca queda desincronizado con el valor cifrado.
-- **El identificador se enmascara en los listados** (`dui_nit_masked` → `•••••4567`) y no se
-  serializa nunca al cliente (`dui_nit_hash` está en `$hidden`).
+- **El identificador se muestra completo en las vistas que lo consumen** —el listado de candidatos del
+  panel, la exportación CSV y el informe PDF, todas restringidas a los roles del panel— y **nunca se
+  serializa al cliente** (`dui_nit_hash` está en `$hidden`). Existe un accessor `dui_nit_masked`
+  (`•••••4567`) previsto para enmascararlo en listados y exportaciones, pero ninguna vista lo usa
+  todavía: enmascararlo es una decisión pendiente, no el comportamiento actual.
 - **El límite de intentos del registro dejó de usar el DUI en claro como clave de caché**
   (`AppServiceProvider.php`); ahora usa el mismo índice seguro.
 

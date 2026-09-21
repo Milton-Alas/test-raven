@@ -587,6 +587,45 @@ php artisan tinker
 
 ```
 
+== E. Confidencialidad de los Datos (RNF-09)
+
+El sistema trata los datos personales según los requisitos *RNF-09* (Ley de Protección de Datos
+Personales de El Salvador, D.L. 144/2024). Tres piezas lo sostienen: el cifrado en reposo, la
+separación de accesos y la retención con supresión.
+
+*Cifrado en reposo.* El *DUI/NIT* se guarda cifrado con *AES-256-CBC*: en la base de datos no queda en
+claro. Para buscar a un candidato y para comprobar que nadie se registre dos veces se usa un índice
+aparte (`dui_nit_hash`), un *HMAC-SHA256* calculado con la clave de la aplicación, que permite
+localizarlo *sin descifrar* su documento. El identificador se muestra completo en las vistas del
+personal autorizado (listado de candidatos, exportación CSV e informe PDF). Si la clave `APP_KEY` se
+pierde, los identificadores cifrados no se pueden recuperar, así que debe respaldarse junto con la base
+de datos.
+
+*Separación de accesos.* El candidato entra con su propia cuenta (guard `candidate`) y solo alcanza su
+sesión de test: no puede ver ni responder por otro candidato, y no tiene acceso a resultados,
+puntajes, percentiles ni clasificación diagnóstica. Esos datos viven únicamente en el panel
+administrativo. La pantalla final del candidato confirma que el test se completó, no muestra el
+resultado.
+
+*Retención y supresión.* Los datos vencidos se eliminan o se anonimizan automáticamente. Los plazos y
+las acciones se configuran por variable de entorno (`.env`), sin tocar código:
+
+#make-table(
+  ("Categoría", "Qué alcanza", "Variable de plazo", "Acción"),
+  (
+    "Datos identificativos", "Nombre, correo, DUI/NIT, edad, ocupación y nivel educativo", "RETENCION_PERSONAL_DIAS", "Disociar",
+    "Expediente psicométrico", "Resultados, puntajes, percentiles, diagnósticos y respuestas", "RETENCION_PSICOMETRICO_DIAS", "Disociar",
+    "Logs de auditoría", "Registro de las acciones del sistema", "RETENCION_ACTIVIDAD_DIAS", "Suprimir",
+    "Trazas técnicas", "Direcciones IP, navegador y dispositivo", "RETENCION_TECNICO_DIAS", "Suprimir"
+  ),
+  col-widths: (auto, 2.2fr, auto, auto)
+)
+
+*Disociar* borra los datos que identifican a la persona y conserva la información estadística;
+*suprimir* elimina el dato por completo. El interruptor general es `RETENCION_ACTIVA`. La aplicación es
+`php artisan retention:apply` —con `--dry-run` para revisar el alcance sin modificar nada—, programada
+a diario, y cada ejecución queda registrada como evidencia.
+
 #pagebreak()
 ---
 *Desarrollado por:*

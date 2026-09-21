@@ -373,13 +373,13 @@ _Estados utilizados: Solventado | Solventado en código | A cargo de la UTI | Ri
 #table(
   columns: (auto, 1fr),
   table.header([Aspecto], [Implementación]),
-  [Campo cifrado en reposo], [`dui_nit` con `Crypt::encryptString` de Laravel (AES-256-CBC). Cifrado de un solo campo, por decisión de diseño: ver Observación 5],
-  [Búsqueda y unicidad], [`dui_nit_hash`: HMAC-SHA256 con `APP_KEY`, sobre el valor normalizado (sin guiones ni espacios, en mayúsculas). Es índice derivado, no un dato capturado],
+  [Campo cifrado en reposo], [`dui_nit` con `Crypt::encryptString` de Laravel (AES-256-CBC, IV aleatorio: el mismo DUI produce un texto cifrado distinto cada vez). Cifrado de un solo campo, por decisión de diseño: ver Observación 5],
+  [Búsqueda y unicidad], [`dui_nit_hash`: HMAC-SHA256 con `APP_KEY`, sobre el valor normalizado (sin guiones ni espacios, en mayúsculas) y con índice único (`candidates_dui_nit_hash_unique`). Es índice derivado, no un dato capturado, y permite buscar y validar duplicados sin descifrar],
   [Contraseñas], [Hash irreversible con el driver de hash de Laravel (cast `hashed`); el restablecimiento lo ejecuta un administrador y queda auditado],
-  [Serialización], [`dui_nit_hash` no se incluye en las respuestas; el listado del panel muestra el identificador enmascarado (`•••••4567`)],
-  [Separación de acceso], [Guards independientes para candidato y administración, con autorización por roles],
+  [Serialización], [`dui_nit_hash` está en `$hidden`: no se serializa en ninguna respuesta. El identificador completo sí se muestra en las vistas de los roles autorizados (listado de candidatos, exportación CSV e informe PDF); el accessor `dui_nit_masked` (`•••••4567`) existe para enmascararlo, pero ninguna de esas vistas lo usa todavía],
+  [Separación de acceso], [Guards `web` (panel) y `candidate` (candidatos) en `config/auth.php`. El candidato solo alcanza su propio flujo (`/instrucciones`, `/test/*`) y ninguna ruta acepta el identificador de una sesión ajena. No recibe el resultado del test —ni puntaje, ni percentil, ni clasificación diagnóstica—: la pantalla de finalización confirma el cierre y no lo muestra. En el panel, autorización por roles],
   [Auditoría], [Restablecimientos de contraseña, exportaciones, altas y cambios de rol de cuentas del panel, y disociaciones por retención quedan en `activity_logs`],
-  [Retención], [Cuatro categorías con plazo y acción configurables; aplicación automática diaria con registro en `retention_logs`],
+  [Retención], [Cuatro categorías con plazo y acción por variable de entorno: datos identificativos (`RETENCION_PERSONAL_DIAS`), expediente psicométrico (`RETENCION_PSICOMETRICO_DIAS`), logs de auditoría (`RETENCION_ACTIVIDAD_DIAS`) y trazas técnicas (`RETENCION_TECNICO_DIAS`); aplicación automática diaria con registro en `retention_logs`],
 )
 
 - *Retención de datos:* los plazos y las acciones son *configurables* mediante variables de entorno, de

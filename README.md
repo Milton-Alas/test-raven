@@ -247,6 +247,63 @@ está en [`docs/RNF-09_CONFIDENCIALIDAD.md`](docs/RNF-09_CONFIDENCIALIDAD.md).
   plazo y acción (`disociar` / `suprimir`) ajustables por entorno.
 - **Aplicación automática:** tarea diaria que deja registro en `retention_logs`.
 
+### Cifrado en reposo del identificador
+
+El `dui_nit` se guarda cifrado con **AES-256-CBC** (el cifrado de la aplicación, vía
+`Crypt::encryptString`, en `app/Support/DuiNitCipher.php`). La búsqueda y la validación de unicidad no
+descifran nada: se resuelven contra `dui_nit_hash`, un **HMAC-SHA256** calculado con `APP_KEY` sobre el
+valor normalizado (sin guiones ni espacios, en mayúsculas) y protegido por el índice único
+`candidates_dui_nit_hash_unique`.
+
+Son dos representaciones por una razón concreta: el cifrado usa un IV aleatorio —el mismo DUI produce
+un texto cifrado distinto cada vez, lo que es correcto para confidencialidad pero impide buscar por
+igualdad— y el HMAC es determinista, así que permite buscar, validar duplicados y agrupar. Se usa HMAC
+y no un hash simple porque un DUI salvadoreño tiene del orden de 10⁸ combinaciones válidas: un SHA-256
+sin clave se revierte con una tabla precalculada y anularía el cifrado.
+
+Consecuencias prácticas: `dui_nit_hash` está en `$hidden`, así que no se serializa en ninguna respuesta;
+el `APP_KEY` es imprescindible, porque sin él no se puede descifrar ni recalcular el índice (ver la
+advertencia al final de esta sección); y donde el identificador se muestra, se muestra **completo**: el
+listado de candidatos del panel, la exportación CSV y el informe PDF lo leen descifrado, porque van
+dirigidos a los roles autorizados y la exportación queda auditada. El accessor `dui_nit_masked`
+(`•••••4567`) existe precisamente para enmascararlo en listados y exportaciones, pero hoy ninguna de
+esas tres vistas lo usa.
+
+### Separación de acceso entre candidato y administración
+
+Son dos guards distintos en `config/auth.php`: `web` para el personal del panel y **`candidate`** para
+los candidatos. El candidato solo alcanza las rutas de su propio flujo (`/instrucciones` y `/test/*`,
+con el middleware `auth:candidate`), y cada controlador resuelve su sesión desde
+`Auth::guard('candidate')->user()`: **ninguna ruta acepta el identificador de una sesión ajena**, así
+que no puede leer ni escribir datos de otro candidato.
+
+Los datos psicométricos viven únicamente en el panel: no hay ninguna ruta del candidato que devuelva el
+resultado del test. La pantalla de finalización confirma que el test se completó, pero no muestra
+puntaje, percentil ni clasificación diagnóstica. Del lado del panel, el acceso a esos datos se resuelve
+con la autorización por roles descrita más arriba.
+
+### Retención y supresión de datos
+
+Cuatro categorías en `config/retention.php`, cada una con su plazo y su acción configurables por
+variable de entorno (se ajustan en el `.env` sin tocar código):
+
+| Categoría | Qué alcanza | Variable de plazo | Acción |
+| --- | --- | --- | --- |
+| `personal` | Datos identificativos: nombre, correo, DUI/NIT, edad, ocupación y nivel educativo | `RETENCION_PERSONAL_DIAS` | `disociar` (`RETENCION_PERSONAL_ACCION`) |
+| `psicometrico` | Expediente psicométrico: resultados, puntajes, percentiles, diagnósticos y respuestas | `RETENCION_PSICOMETRICO_DIAS` | `disociar` (`RETENCION_PSICOMETRICO_ACCION`) |
+| `actividad` | Logs de auditoría (`activity_logs`) | `RETENCION_ACTIVIDAD_DIAS` | `suprimir` (`RETENCION_ACTIVIDAD_ACCION`) |
+| `tecnico` | Trazas técnicas: IP, user agent y datos del navegador | `RETENCION_TECNICO_DIAS` | `suprimir` (`RETENCION_TECNICO_ACCION`) |
+
+**Disociar** elimina los identificadores directos (nombre, correo, DUI/NIT e índice, edad, ocupación y
+nivel educativo) y conserva el dato desagregado, que deja de ser atribuible a una persona; los datos
+psicométricos se disocian —no se suprimen— para no romper la serie histórica con la que se calibra el
+baremo. **Suprimir** elimina el dato por completo. El interruptor general es `RETENCION_ACTIVA`.
+
+La aplicación es `php artisan retention:apply`, también programada a diario por el planificador
+(`--dry-run` permite revisar el alcance sin modificar nada y `--categoria=` limita la ejecución a una
+sola). Cada ejecución queda como evidencia en `retention_logs`. Quedan fuera de la política el banco de
+ítems, las cuentas del panel y las copias de seguridad.
+
 > **Advertencia operativa:** el `APP_KEY` cifra los identificadores. Si se pierde, los datos cifrados
 > son irrecuperables. Debe respaldarse junto con la base — ver
 > [`docs/RESPALDO_Y_OPERACION.md`](docs/RESPALDO_Y_OPERACION.md).
